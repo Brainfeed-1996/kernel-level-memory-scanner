@@ -37,6 +37,9 @@ set(DETECTION_SOURCES
     src/detection/amsi_bypass_detector.cpp
     src/detection/fileless_attack_detector.cpp
     src/detection/edr_evasion_detector.cpp
+    src/detection/advanced_persistence_detector.cpp
+    src/detection/lateral_movement_detector.cpp
+    src/detection/kernel_object_hook_detector.cpp
 )
 
 # Source files - Analysis modules

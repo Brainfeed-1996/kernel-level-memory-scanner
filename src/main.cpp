@@ -1,12 +1,12 @@
 /**
- * Kernel-Level Memory Scanner v22.0
- * Enterprise-Grade Kernel Security Suite with Threat Hunting & Fileless Detection
+ * Kernel-Level Memory Scanner v23.0
+ * Enterprise-Grade Kernel Security Suite with Advanced Persistence & Lateral Movement
  * 
- * v22.0 Features:
- * - All v21 modules PLUS:
- * - Threat Hunting Engine (MITRE ATT&CK)
- * - Fileless Attack Detector
- * - EDR Evasion Detector
+ * v23.0 Features:
+ * - All v22 modules PLUS:
+ * - Advanced Persistence Detector
+ * - Lateral Movement Detector
+ * - Kernel Object Hook Detector
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -37,12 +37,15 @@
 #include "include/threat_hunting_engine.h"
 #include "include/fileless_attack_detector.h"
 #include "include/edr_evasion_detector.h"
+#include "include/advanced_persistence_detector.h"
+#include "include/lateral_movement_detector.h"
+#include "include/kernel_object_hook_detector.h"
 
 void print_banner() {
     std::cout << R"(
     ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v22.0 - Advanced Threat Detection Suite                    ║
-    ║     APT • Ransomware • Bootkit • Threat Hunt • Fileless • EDR • MITRE ATT&CK • AI   ║
+    ║     Kernel Memory Scanner v23.0 - Enterprise Threat Detection Suite                 ║
+    ║     APT • Persistence • Lateral • Hooks • Threat Hunt • Fileless • EDR • MITRE • AI  ║
     ║     Author: Olivier Robert-Duboille                                                  ║
     ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
@@ -74,6 +77,9 @@ int main() {
     std::unique_ptr<KernelScanner::ThreatHuntingEngine> threat_hunt(new KernelScanner::ThreatHuntingEngine());
     std::unique_ptr<KernelScanner::FilelessAttackDetector> fileless(new KernelScanner::FilelessAttackDetector());
     std::unique_ptr<KernelScanner::EDREVasionDetector> edr_evasion(new KernelScanner::EDREVasionDetector());
+    std::unique_ptr<KernelScanner::AdvancedPersistenceDetector> persistence(new KernelScanner::AdvancedPersistenceDetector());
+    std::unique_ptr<KernelScanner::LateralMovementDetector> lateral(new KernelScanner::LateralMovementDetector());
+    std::unique_ptr<KernelScanner::KernelObjectHookDetector> hooks(new KernelScanner::KernelObjectHookDetector());
     
     std::cout << "\nSelect Analysis Mode:" << std::endl;
     std::cout << " 1. APT Detection" << std::endl;
@@ -99,7 +105,10 @@ int main() {
     std::cout << "21. Threat Hunting Engine (MITRE ATT&CK)" << std::endl;
     std::cout << "22. Fileless Attack Detector" << std::endl;
     std::cout << "23. EDR Evasion Detector" << std::endl;
-    std::cout << "24. Full Security Suite" << std::endl;
+    std::cout << "24. Advanced Persistence Detector" << std::endl;
+    std::cout << "25. Lateral Movement Detector" << std::endl;
+    std::cout << "26. Kernel Object Hook Detector" << std::endl;
+    std::cout << "27. Full Security Suite" << std::endl;
     
     int choice;
     std::cin >> choice;
@@ -238,7 +247,6 @@ int main() {
             threat_hunt->initialize();
             auto hunt = threat_hunt->create_hunt("Suspected lateral movement activity");
             auto iocs = threat_hunt->execute_hunt(hunt);
-            threat_hunt->add_ioc_pattern("ip", ".*\\.cn$");
             threat_hunt->generate_threat_intelligence_report();
             break;
         }
@@ -246,23 +254,44 @@ int main() {
             fileless->initialize();
             auto threats = fileless->detect_fileless_activity();
             fileless->analyze_memory_artifacts(1234);
-            auto artifacts = fileless->find_anomalous_memory_regions(1234);
             fileless->generate_fileless_report();
             break;
         }
         case 23: {
             edr_evasion->initialize();
             auto evasions = edr_evasion->detect_edr_evasion();
-            edr_evasion->detect_process_hollowing();
-            edr_evasion->detect_syscall_abuse();
             edr_evasion->generate_edr_report();
             break;
         }
-        case 24:
+        case 24: {
+            persistence->initialize();
+            auto indicators = persistence->scan_all_persistence();
+            auto tasks = persistence->detect_scheduled_tasks();
+            auto services = persistence->detect_suspicious_services();
+            persistence->generate_persistence_report();
+            break;
+        }
+        case 25: {
+            lateral->initialize();
+            auto movements = lateral->detect_lateral_movement();
+            auto credentials = lateral->detect_credential_access();
+            auto connections = lateral->analyze_network_connections();
+            lateral->generate_lateral_movement_report();
+            break;
+        }
+        case 26: {
+            hooks->initialize();
+            auto kernel_hooks = hooks->detect_kernel_hooks();
+            auto ssdt = hooks->analyze_ssdt();
+            auto irp = hooks->analyze_irp_handlers();
+            hooks->generate_hook_report();
+            break;
+        }
+        case 27:
             std::cout << "\n=== Full Security Suite ===" << std::endl;
-            threat_hunt->create_hunt("Full system threat hunt");
-            fileless->detect_fileless_activity();
-            edr_evasion->detect_edr_evasion();
+            persistence->scan_all_persistence();
+            lateral->detect_lateral_movement();
+            hooks->detect_kernel_hooks();
             break;
     }
     
