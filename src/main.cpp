@@ -1,12 +1,12 @@
 /**
- * Kernel-Level Memory Scanner v24.0
- * Enterprise-Grade Kernel Security Suite with Advanced Forensics & Behavioral Analysis
+ * Kernel-Level Memory Scanner v25.0
+ * Enterprise-Grade Kernel Security Suite with Advanced PE, Sandbox & Network Analysis
  * 
- * v24.0 Features:
- * - All v23 modules PLUS:
- * - Memory Forensics V2
- * - Threat Intelligence V2
- * - Behavioral Analysis
+ * v25.0 Features:
+ * - All v24 modules PLUS:
+ * - Advanced PE Forensics
+ * - Malware Sandbox V2
+ * - Network Traffic Analyzer V2
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -43,14 +43,17 @@
 #include "include/memory_forensics_v2.h"
 #include "include/threat_intelligence_v2.h"
 #include "include/behavioral_analysis.h"
+#include "include/advanced_pe_forensics.h"
+#include "include/malware_sandbox_v2.h"
+#include "include/network_traffic_analyzer_v2.h"
 
 void print_banner() {
     std::cout << R"(
-    ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v24.0 - Enterprise Forensics & Behavioral Suite               ║
-    ║     Forensics V2 • Threat Intel V2 • Behavioral • APT • Persistence • Lateral • Hooks • AI  ║
+    ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+    ║     Kernel Memory Scanner v25.0 - Enterprise Advanced Analysis Suite                              ║
+    ║     PE Forensics V2 • Sandbox V2 • Network V2 • Forensics V2 • Threat Intel V2 • Behavioral • APT • Persistence • AI  ║
     ║     Author: Olivier Robert-Duboille                                                  ║
-    ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════╝
+    ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
 }
 
@@ -86,6 +89,9 @@ int main() {
     std::unique_ptr<KernelScanner::MemoryForensicsV2> forensics_v2(new KernelScanner::MemoryForensicsV2());
     std::unique_ptr<KernelScanner::ThreatIntelligenceV2> threat_intel_v2(new KernelScanner::ThreatIntelligenceV2());
     std::unique_ptr<KernelScanner::BehavioralAnalysis> behavioral(new KernelScanner::BehavioralAnalysis());
+    std::unique_ptr<KernelScanner::AdvancedPEForensics> pe_v2(new KernelScanner::AdvancedPEForensics());
+    std::unique_ptr<KernelScanner::MalwareSandboxV2> sandbox_v2(new KernelScanner::MalwareSandboxV2());
+    std::unique_ptr<KernelScanner::NetworkTrafficAnalyzerV2> network_v2(new KernelScanner::NetworkTrafficAnalyzerV2());
     
     std::cout << "\nSelect Analysis Mode:" << std::endl;
     std::cout << " 1. APT Detection" << std::endl;
@@ -117,7 +123,10 @@ int main() {
     std::cout << "27. Memory Forensics V2" << std::endl;
     std::cout << "28. Threat Intelligence V2" << std::endl;
     std::cout << "29. Behavioral Analysis" << std::endl;
-    std::cout << "30. Full Security Suite" << std::endl;
+    std::cout << "30. Advanced PE Forensics" << std::endl;
+    std::cout << "31. Malware Sandbox V2" << std::endl;
+    std::cout << "32. Network Traffic Analyzer V2" << std::endl;
+    std::cout << "33. Full Security Suite" << std::endl;
     
     int choice;
     std::cin >> choice;
@@ -288,7 +297,6 @@ int main() {
         case 26: {
             hooks->initialize();
             auto kernel_hooks = hooks->detect_kernel_hooks();
-            auto ssdt = hooks->analyze_ssdt();
             hooks->generate_hook_report();
             break;
         }
@@ -296,9 +304,6 @@ int main() {
             forensics_v2->initialize();
             auto processes = forensics_v2->enumerate_processes();
             auto threads = forensics_v2->enumerate_threads(1234);
-            auto regions = forensics_v2->enumerate_memory_regions(1234);
-            auto c2_connections = forensics_v2->find_c2_connections();
-            auto injected = forensics_v2->find_injected_memory(1234);
             forensics_v2->generate_forensics_report();
             break;
         }
@@ -306,31 +311,48 @@ int main() {
             threat_intel_v2->initialize();
             auto iocs = threat_intel_v2->lookup_ioc("ip", "192.168.1.100");
             auto actors = threat_intel_v2->get_known_threat_actors();
-            auto campaigns = threat_intel_v2->get_active_campaigns();
-            auto malware = threat_intel_v2->get_known_malware();
-            auto vulns = threat_intel_v2->get_critical_vulnerabilities();
             threat_intel_v2->generate_threat_report();
             break;
         }
         case 29: {
             behavioral->initialize();
-            behavioral->record_file_operation(1234, "write", "C:\\Temp\\suspicious.exe");
-            behavioral->record_registry_operation(1234, "set", "HKCU\\Software\\Run");
-            behavioral->record_network_operation(1234, "connect", "evil.com:443");
-            behavioral->record_process_operation(1234, "create", "malware.exe");
             auto behavior = behavioral->analyze_process_behavior(1234);
-            auto anomalies = behavioral->detect_anomalies(1234);
-            auto patterns = behavioral->match_attack_patterns(behavior);
-            auto ttps = behavioral->detect_mitre_ttps(behavior);
-            auto profile = behavioral->generate_behavioral_profile("suspicious.exe");
             behavioral->generate_behavioral_report();
             break;
         }
-        case 30:
+        case 30: {
+            pe_v2->initialize();
+            auto result = pe_v2->analyze_pe("malware.exe");
+            pe_v2->detect_packing();
+            pe_v2->extract_strings();
+            pe_v2->detect_c2_indicators();
+            pe_v2->generate_pe_report(result);
+            break;
+        }
+        case 31: {
+            sandbox_v2->initialize();
+            auto report = sandbox_v2->analyze_sample("suspicious.exe");
+            auto dynamic = sandbox_v2->run_dynamic_analysis("suspicious.exe", 60);
+            sandbox_v2->detect_evasion_techniques();
+            sandbox_v2->generate_sandbox_report(report);
+            break;
+        }
+        case 32: {
+            network_v2->initialize();
+            auto packets = network_v2->capture_packets(100);
+            auto flows = network_v2->extract_flows(packets);
+            auto connections = network_v2->get_active_connections();
+            auto anomalies = network_v2->detect_anomalies();
+            auto c2 = network_v2->detect_c2_traffic();
+            auto exfil = network_v2->detect_exfiltration();
+            network_v2->generate_network_report();
+            break;
+        }
+        case 33:
             std::cout << "\n=== Full Security Suite ===" << std::endl;
-            forensics_v2->enumerate_processes();
-            threat_intel_v2->get_active_campaigns();
-            behavioral->analyze_process_behavior(1234);
+            pe_v2->analyze_pe("malware.exe");
+            sandbox_v2->analyze_sample("suspicious.exe");
+            network_v2->capture_packets(100);
             break;
     }
     

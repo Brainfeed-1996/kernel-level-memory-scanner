@@ -62,6 +62,9 @@ set(ANALYSIS_SOURCES
     src/analysis/memory_forensics_v2.cpp
     src/analysis/threat_intelligence_v2.cpp
     src/analysis/behavioral_analysis.cpp
+    src/analysis/advanced_pe_forensics.cpp
+    src/analysis/malware_sandbox_v2.cpp
+    src/analysis/network_traffic_analyzer_v2.cpp
 )
 
 # Include directories
