@@ -31,6 +31,7 @@ set(DETECTION_SOURCES
     src/detection/rootkit_detector.cpp
     src/detection/heartbeat_detector.cpp
     src/detection/process_ghosting_detector.cpp
+    src/detection/dll_hijacking_detector.cpp
 )
 
 # Source files - Analysis modules
@@ -48,6 +49,7 @@ set(ANALYSIS_SOURCES
     src/analysis/code_cave_detector.cpp
     src/analysis/neural_network.cpp
     src/analysis/anti_debug.cpp
+    src/analysis/memory_integrity_checker.cpp
 )
 
 # Include directories

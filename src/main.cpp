@@ -1,11 +1,11 @@
 /**
- * Kernel-Level Memory Scanner v19.0
- * Enterprise-Grade Kernel Security Suite with Heartbeat & Ghosting Detection
+ * Kernel-Level Memory Scanner v20.0
+ * Enterprise-Grade Kernel Security Suite with Memory Integrity & DLL Hijacking
  * 
- * v19.0 Features:
- * - All v18 modules PLUS:
- * - Heartbeat Anomaly Detection
- * - Process Ghosting Detection
+ * v20.0 Features:
+ * - All v19 modules PLUS:
+ * - Memory Integrity Checker
+ * - DLL Hijacking Detector
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -28,14 +28,16 @@
 #include "include/anti_debug.h"
 #include "include/heartbeat_detector.h"
 #include "include/process_ghosting_detector.h"
+#include "include/memory_integrity_checker.h"
+#include "include/dll_hijacking_detector.h"
 
 void print_banner() {
     std::cout << R"(
-    ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v19.0 - Advanced Threat Detection Suite                     ║
-    ║     APT • Rootkits • Anti-Debug • Heartbeat • Ghosting • Disassembler • Sandbox • AI     ║
+    ╔═══════════════════════════════════════════════════════════════════════════════════════════════╗
+    ║     Kernel Memory Scanner v20.0 - Advanced Memory Security Suite               ║
+    ║     APT • Rootkits • Anti-Debug • Integrity • DLL • Ghosting • Disassembler • AI     ║
     ║     Author: Olivier Robert-Duboille                                                  ║
-    ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════╝
+    ╚═══════════════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
 }
 
@@ -57,6 +59,8 @@ int main() {
     std::unique_ptr<KernelScanner::AntiDebugDetection> anti_debug(new KernelScanner::AntiDebugDetection());
     std::unique_ptr<KernelScanner::HeartbeatDetector> heartbeat(new KernelScanner::HeartbeatDetector());
     std::unique_ptr<KernelScanner::ProcessGhostingDetector> ghosting(new KernelScanner::ProcessGhostingDetector());
+    std::unique_ptr<KernelScanner::MemoryIntegrityChecker> integrity(new KernelScanner::MemoryIntegrityChecker());
+    std::unique_ptr<KernelScanner::DLLHijackingDetector> dll_hijack(new KernelScanner::DLLHijackingDetector());
     
     std::cout << "\nSelect Analysis Mode:" << std::endl;
     std::cout << " 1. APT Detection" << std::endl;
@@ -74,7 +78,9 @@ int main() {
     std::cout << "13. Anti-Debug Detection" << std::endl;
     std::cout << "14. Heartbeat Anomaly Detection" << std::endl;
     std::cout << "15. Process Ghosting Detection" << std::endl;
-    std::cout << "16. Full Security Suite" << std::endl;
+    std::cout << "16. Memory Integrity Checker" << std::endl;
+    std::cout << "17. DLL Hijacking Detector" << std::endl;
+    std::cout << "18. Full Security Suite" << std::endl;
     
     int choice;
     std::cin >> choice;
@@ -169,12 +175,27 @@ int main() {
             ghosting->generate_threat_report();
             break;
         }
-        case 16:
+        case 16: {
+            integrity->initialize();
+            integrity->add_region(0x400000, 0x5000, "RWX", "suspicious.exe");
+            auto violations = integrity->check_integrity();
+            integrity->detect_modifications();
+            integrity->enable_continuous_monitoring(true);
+            integrity->generate_integrity_report();
+            break;
+        }
+        case 17: {
+            dll_hijack->initialize();
+            auto indicators = dll_hijack->scan_process(1234);
+            dll_hijack->scan_all_processes();
+            dll_hijack->check_search_order("C:\\App\\app.exe");
+            dll_hijack->generate_hijack_report();
+            break;
+        }
+        case 18:
             std::cout << "\n=== Full Security Suite ===" << std::endl;
-            auto indicators = anti_debug->detect_anti_debug();
-            anti_debug->print_detection_report(indicators);
-            heartbeat->detect_anomalies();
-            ghosting->detect_process_ghosting();
+            integrity->check_integrity();
+            dll_hijack->scan_all_processes();
             break;
     }
     
