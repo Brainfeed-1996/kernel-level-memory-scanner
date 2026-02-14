@@ -59,6 +59,9 @@ set(ANALYSIS_SOURCES
     src/analysis/anti_debug.cpp
     src/analysis/memory_integrity_checker.cpp
     src/analysis/threat_hunting_engine.cpp
+    src/analysis/memory_forensics_v2.cpp
+    src/analysis/threat_intelligence_v2.cpp
+    src/analysis/behavioral_analysis.cpp
 )
 
 # Include directories

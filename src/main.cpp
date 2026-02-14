@@ -1,12 +1,12 @@
 /**
- * Kernel-Level Memory Scanner v23.0
- * Enterprise-Grade Kernel Security Suite with Advanced Persistence & Lateral Movement
+ * Kernel-Level Memory Scanner v24.0
+ * Enterprise-Grade Kernel Security Suite with Advanced Forensics & Behavioral Analysis
  * 
- * v23.0 Features:
- * - All v22 modules PLUS:
- * - Advanced Persistence Detector
- * - Lateral Movement Detector
- * - Kernel Object Hook Detector
+ * v24.0 Features:
+ * - All v23 modules PLUS:
+ * - Memory Forensics V2
+ * - Threat Intelligence V2
+ * - Behavioral Analysis
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -40,12 +40,15 @@
 #include "include/advanced_persistence_detector.h"
 #include "include/lateral_movement_detector.h"
 #include "include/kernel_object_hook_detector.h"
+#include "include/memory_forensics_v2.h"
+#include "include/threat_intelligence_v2.h"
+#include "include/behavioral_analysis.h"
 
 void print_banner() {
     std::cout << R"(
     ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v23.0 - Enterprise Threat Detection Suite                 ║
-    ║     APT • Persistence • Lateral • Hooks • Threat Hunt • Fileless • EDR • MITRE • AI  ║
+    ║     Kernel Memory Scanner v24.0 - Enterprise Forensics & Behavioral Suite               ║
+    ║     Forensics V2 • Threat Intel V2 • Behavioral • APT • Persistence • Lateral • Hooks • AI  ║
     ║     Author: Olivier Robert-Duboille                                                  ║
     ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
@@ -80,6 +83,9 @@ int main() {
     std::unique_ptr<KernelScanner::AdvancedPersistenceDetector> persistence(new KernelScanner::AdvancedPersistenceDetector());
     std::unique_ptr<KernelScanner::LateralMovementDetector> lateral(new KernelScanner::LateralMovementDetector());
     std::unique_ptr<KernelScanner::KernelObjectHookDetector> hooks(new KernelScanner::KernelObjectHookDetector());
+    std::unique_ptr<KernelScanner::MemoryForensicsV2> forensics_v2(new KernelScanner::MemoryForensicsV2());
+    std::unique_ptr<KernelScanner::ThreatIntelligenceV2> threat_intel_v2(new KernelScanner::ThreatIntelligenceV2());
+    std::unique_ptr<KernelScanner::BehavioralAnalysis> behavioral(new KernelScanner::BehavioralAnalysis());
     
     std::cout << "\nSelect Analysis Mode:" << std::endl;
     std::cout << " 1. APT Detection" << std::endl;
@@ -108,7 +114,10 @@ int main() {
     std::cout << "24. Advanced Persistence Detector" << std::endl;
     std::cout << "25. Lateral Movement Detector" << std::endl;
     std::cout << "26. Kernel Object Hook Detector" << std::endl;
-    std::cout << "27. Full Security Suite" << std::endl;
+    std::cout << "27. Memory Forensics V2" << std::endl;
+    std::cout << "28. Threat Intelligence V2" << std::endl;
+    std::cout << "29. Behavioral Analysis" << std::endl;
+    std::cout << "30. Full Security Suite" << std::endl;
     
     int choice;
     std::cin >> choice;
@@ -266,8 +275,6 @@ int main() {
         case 24: {
             persistence->initialize();
             auto indicators = persistence->scan_all_persistence();
-            auto tasks = persistence->detect_scheduled_tasks();
-            auto services = persistence->detect_suspicious_services();
             persistence->generate_persistence_report();
             break;
         }
@@ -275,7 +282,6 @@ int main() {
             lateral->initialize();
             auto movements = lateral->detect_lateral_movement();
             auto credentials = lateral->detect_credential_access();
-            auto connections = lateral->analyze_network_connections();
             lateral->generate_lateral_movement_report();
             break;
         }
@@ -283,15 +289,48 @@ int main() {
             hooks->initialize();
             auto kernel_hooks = hooks->detect_kernel_hooks();
             auto ssdt = hooks->analyze_ssdt();
-            auto irp = hooks->analyze_irp_handlers();
             hooks->generate_hook_report();
             break;
         }
-        case 27:
+        case 27: {
+            forensics_v2->initialize();
+            auto processes = forensics_v2->enumerate_processes();
+            auto threads = forensics_v2->enumerate_threads(1234);
+            auto regions = forensics_v2->enumerate_memory_regions(1234);
+            auto c2_connections = forensics_v2->find_c2_connections();
+            auto injected = forensics_v2->find_injected_memory(1234);
+            forensics_v2->generate_forensics_report();
+            break;
+        }
+        case 28: {
+            threat_intel_v2->initialize();
+            auto iocs = threat_intel_v2->lookup_ioc("ip", "192.168.1.100");
+            auto actors = threat_intel_v2->get_known_threat_actors();
+            auto campaigns = threat_intel_v2->get_active_campaigns();
+            auto malware = threat_intel_v2->get_known_malware();
+            auto vulns = threat_intel_v2->get_critical_vulnerabilities();
+            threat_intel_v2->generate_threat_report();
+            break;
+        }
+        case 29: {
+            behavioral->initialize();
+            behavioral->record_file_operation(1234, "write", "C:\\Temp\\suspicious.exe");
+            behavioral->record_registry_operation(1234, "set", "HKCU\\Software\\Run");
+            behavioral->record_network_operation(1234, "connect", "evil.com:443");
+            behavioral->record_process_operation(1234, "create", "malware.exe");
+            auto behavior = behavioral->analyze_process_behavior(1234);
+            auto anomalies = behavioral->detect_anomalies(1234);
+            auto patterns = behavioral->match_attack_patterns(behavior);
+            auto ttps = behavioral->detect_mitre_ttps(behavior);
+            auto profile = behavioral->generate_behavioral_profile("suspicious.exe");
+            behavioral->generate_behavioral_report();
+            break;
+        }
+        case 30:
             std::cout << "\n=== Full Security Suite ===" << std::endl;
-            persistence->scan_all_persistence();
-            lateral->detect_lateral_movement();
-            hooks->detect_kernel_hooks();
+            forensics_v2->enumerate_processes();
+            threat_intel_v2->get_active_campaigns();
+            behavioral->analyze_process_behavior(1234);
             break;
     }
     
