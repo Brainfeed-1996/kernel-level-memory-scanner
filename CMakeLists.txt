@@ -34,6 +34,9 @@ set(DETECTION_SOURCES
 set(ANALYSIS_SOURCES
     src/analysis/attack_chain_visualizer.cpp
     src/analysis/memory_forensics.cpp
+    src/analysis/malware_sandbox.cpp
+    src/analysis/yara_compiler.cpp
+    src/analysis/network_analyzer.cpp
 )
 
 # Include directories

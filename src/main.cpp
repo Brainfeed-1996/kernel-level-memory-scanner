@@ -1,13 +1,13 @@
 /**
- * Kernel-Level Memory Scanner v12.0
+ * Kernel-Level Memory Scanner v13.0
  * Enterprise-Grade Kernel Security Suite
- * Extended Modular Architecture with Analysis Tools
+ * Complete Modular Architecture
  * 
- * v12.0 Features:
- * - All v11 modules PLUS:
- * - Memory Forensics Timeline Analysis
- * - Code Injection Detection
- * - Privilege Escalation Detection
+ * v13.0 Features:
+ * - All v12 modules PLUS:
+ * - Malware Sandbox Analysis
+ * - YARA Compiler
+ * - Network Traffic Analyzer
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -31,14 +31,17 @@
 #include "include/privilege_escalation.h"
 #include "include/attack_chain_visualizer.h"
 #include "include/memory_forensics.h"
+#include "include/malware_sandbox.h"
+#include "include/yara_compiler.h"
+#include "include/network_analyzer.h"
 
 void print_banner() {
     std::cout << R"(
-    ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v12.0 - Enterprise Security Suite with Forensics & Detection                                   ║
-    ║     APT • LotL • Injections • PrivEsc • Timeline Forensics • Kernel Callbacks • Process Hollowing                     ║
-    ║     Author: Olivier Robert-Duboille                                                                                      ║
-    ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+    ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+    ║     Kernel Memory Scanner v13.0 - Complete Enterprise Security Suite                                                            ║
+    ║     APT • LotL • Injections • PrivEsc • Sandbox • YARA • Network Analysis • Timeline Forensics                                            ║
+    ║     Author: Olivier Robert-Duboille                                                                                                      ║
+    ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
 }
 
@@ -62,6 +65,9 @@ int main() {
     std::unique_ptr<KernelScanner::PrivilegeEscalationDetector> priv_esc_detector(new KernelScanner::PrivilegeEscalationDetector());
     std::unique_ptr<KernelScanner::AttackChainVisualizer> attack_chain(new KernelScanner::AttackChainVisualizer());
     std::unique_ptr<KernelScanner::MemoryForensicsTimeline> timeline(new KernelScanner::MemoryForensicsTimeline());
+    std::unique_ptr<KernelScanner::MalwareSandbox> sandbox(new KernelScanner::MalwareSandbox());
+    std::unique_ptr<KernelScanner::YARACompiler> yara_compiler(new KernelScanner::YARACompiler());
+    std::unique_ptr<KernelScanner::NetworkTrafficAnalyzer> network_analyzer(new KernelScanner::NetworkTrafficAnalyzer());
     
     std::cout << "\nSelect Analysis Mode:" << std::endl;
     std::cout << " 1. APT Detection" << std::endl;
@@ -79,8 +85,11 @@ int main() {
     std::cout << "13. Code Injection Detection" << std::endl;
     std::cout << "14. Privilege Escalation Detection" << std::endl;
     std::cout << "15. Memory Forensics Timeline" << std::endl;
-    std::cout << "16. Attack Chain Visualization" << std::endl;
-    std::cout << "17. Full Security Suite" << std::endl;
+    std::cout << "16. Malware Sandbox Analysis" << std::endl;
+    std::cout << "17. YARA Compiler" << std::endl;
+    std::cout << "18. Network Traffic Analysis" << std::endl;
+    std::cout << "19. Attack Chain Visualization" << std::endl;
+    std::cout << "20. Full Security Suite" << std::endl;
     
     int choice;
     std::cin >> choice;
@@ -153,20 +162,37 @@ int main() {
             timeline->generate_timeline();
             timeline->export_timeline("timeline.json");
             break;
-        case 16:
+        case 16: {
+            auto result = sandbox->analyze_malware("sample.exe");
+            sandbox->generate_report(result);
+            break;
+        }
+        case 17: {
+            auto rule = yara_compiler->create_rule("malware_rule", "rule malware { condition: true }");
+            yara_compiler->compile_rule(rule);
+            yara_compiler->print_compilation_result(rule);
+            yara_compiler->scan_file("test.exe", {rule});
+            break;
+        }
+        case 18:
+            network_analyzer->capture_packets(100);
+            network_analyzer->analyze_traffic();
+            network_analyzer->detect_anomalies();
+            network_analyzer->generate_report();
+            break;
+        case 19:
             attack_chain->build_attack_chain();
             attack_chain->visualize_attack_chain();
             break;
-        case 17:
+        case 20:
             std::cout << "\n=== Full Security Suite ===" << std::endl;
             auto apt = apt_detector->detect_apt();
             apt_detector->print_apt_report(apt);
-            auto injections = injection_detector->detect_injections();
-            injection_detector->print_injection_report(injections);
-            auto events = priv_esc_detector->detect_privilege_escalation();
-            priv_esc_detector->print_escalation_report(events);
-            timeline->generate_timeline();
-            timeline->export_timeline("timeline.json");
+            auto result = sandbox->analyze_malware("sample.exe");
+            sandbox->generate_report(result);
+            network_analyzer->capture_packets(100);
+            network_analyzer->analyze_traffic();
+            network_analyzer->generate_report();
             break;
     }
     
