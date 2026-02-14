@@ -65,6 +65,7 @@ set(ANALYSIS_SOURCES
     src/analysis/advanced_pe_forensics.cpp
     src/analysis/malware_sandbox_v2.cpp
     src/analysis/network_traffic_analyzer_v2.cpp
+    src/analysis/advanced_threat_simulation.cpp
 )
 
 # Include directories
