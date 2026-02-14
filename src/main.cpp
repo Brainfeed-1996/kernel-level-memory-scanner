@@ -1,14 +1,15 @@
 /**
- * Kernel-Level Memory Scanner v5.0
- * Advanced Memory Forensics & Code Injection Analysis Suite
+ * Kernel-Level Memory Scanner v6.0
+ * Advanced Malware Analysis & Reverse Engineering Suite
  * 
- * v5.0 Features:
- * - Memory Carving (PE/Image extraction from memory)
- * - Volatility-style Plugin System
- * - Code Cave Detection
- * - Driver Signature Verification
- * - Memory Mapped File Analysis
- * - Thermal/Performance Monitoring Integration
+ * v6.0 Features:
+ * - Unpacker Engine (UPX, generic)
+ * - Disassembler (Capstone-style)
+ * - Control Flow Graph (CFG) Generation
+ * - Malware Sandbox Simulation
+ * - API Call Monitoring
+ * - YARA Rule Compiler
+ * - Shellcode Analysis
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -20,7 +21,8 @@
 #include <string>
 #include <map>
 #include <regex>
-#include <filesystem>
+#include <unordered_map>
+#include <functional>
 #include <thread>
 #include <mutex>
 #include <atomic>
@@ -29,318 +31,483 @@
 #include <cmath>
 #include <random>
 #include <algorithm>
-#include <functional>
-#include <unordered_map>
 
 #ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
-#include <tlhelp32.h>
-#include <dbghelp.h>
-#include <wincrypt.h>
 #pragma comment(lib, "psapi.lib")
-#pragma comment(lib, "dbghelp.lib")
-#pragma comment(lib, "crypt32.lib")
 #endif
 
 namespace KernelScanner {
 
 // ============================================
-// Volatility-style Plugin System
+// Disassembler Engine (x86/x64)
 // ============================================
-class VolatilityPlugin {
+class Disassembler {
 public:
-    virtual std::string get_name() = 0;
-    virtual std::string get_description() = 0;
-    virtual std::map<std::string, std::string> run() = 0;
-    virtual ~VolatilityPlugin() = default;
-};
-
-// Plugin: Process Discovery
-class ProcessListPlugin : public VolatilityPlugin {
-public:
-    std::string get_name() override { return "pslist"; }
-    std::string get_description() override { return "List all running processes"; }
-    
-    std::map<std::string, std::string> run() override {
-        std::map<std::string, std::string> results;
-        
-        std::cout << "[*] Running pslist plugin..." << std::endl;
-        
-#ifdef _WIN32
-        HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        if (hProcessSnap == INVALID_HANDLE_VALUE) {
-            results["error"] = "Failed to create snapshot";
-            return results;
-        }
-        
-        PROCESSENTRY32 pe32;
-        pe32.dwSize = sizeof(PROCESSENTRY32);
-        
-        if (Process32First(hProcessSnap, &pe32)) {
-            do {
-                std::stringstream ss;
-                ss << "PID: " << pe32.th32ProcessID 
-                   << " | Name: " << pe32.szExeFile
-                   << " | Threads: " << pe32.cntThreads;
-                results[pe32.szExeFile] = ss.str();
-            } while (Process32Next(hProcessSnap, &pe32));
-        }
-        CloseHandle(hProcessSnap);
-#endif
-        
-        return results;
-    }
-};
-
-// Plugin: DLL Enumeration
-class DllListPlugin : public VolatilityPlugin {
-public:
-    std::string get_name() override { return "dlllist"; }
-    std::string get_description() override { return "List loaded DLLs for a process"; }
-    
-    std::map<std::string, std::string> run() override {
-        std::map<std::string, std::string> results;
-        results["ntdll.dll"] = "Address: 0x7FFABCD00000";
-        results["kernel32.dll"] = "Address: 0x7FFABC800000";
-        results["kernelbase.dll"] = "Address: 0x7FFAB800000";
-        results["user32.dll"] = "Address: 0x7FFAB400000";
-        results["gdi32.dll"] = "Address: 0x7FFAB200000";
-        return results;
-    }
-};
-
-// Plugin: Network Connections
-class NetScanPlugin : public VolatilityPlugin {
-public:
-    std::string get_name() override { return "netscan"; }
-    std::string get_description() override { return "Scan for network connections"; }
-    
-    std::map<std::string, std::string> run() override {
-        std::map<std::string, std::string> results;
-        
-        // Simulated network connections
-        results["chrome.exe"] = "TCP 192.168.1.100:52341 -> 142.250.185.78:443 (ESTABLISHED)";
-        results["firefox.exe"] = "TCP 192.168.1.100:52342 -> 93.184.216.34:443 (TIME_WAIT)";
-        results["svchost.exe"] = "UDP 192.168.1.100:123 -> 0.0.0.0:123 (LISTENING)";
-        results["code.exe"] = "TCP 127.0.0.1:52345 -> 127.0.0.1:63342 (ESTABLISHED)";
-        
-        return results;
-    }
-};
-
-// Plugin Manager
-class PluginManager {
-private:
-    std::map<std::string, std::unique_ptr<VolatilityPlugin>> plugins;
-    
-public:
-    PluginManager() {
-        plugins["pslist"] = std::make_unique<ProcessListPlugin>();
-        plugins["dlllist"] = std::make_unique<DllListPlugin>();
-        plugins["netscan"] = std::make_unique<NetScanPlugin>();
-    }
-    
-    void list_plugins() {
-        std::cout << "\n=== Available Plugins ===" << std::endl;
-        for (const auto& [name, plugin] : plugins) {
-            std::cout << name << " - " << plugin->get_description() << std::endl;
-        }
-    }
-    
-    void run_plugin(const std::string& name) {
-        if (plugins.find(name) != plugins.end()) {
-            auto results = plugins[name]->run();
-            for (const auto& [key, value] : results) {
-                std::cout << "  " << key << ": " << value << std::endl;
-            }
-        } else {
-            std::cout << "Plugin not found: " << name << std::endl;
-        }
-    }
-};
-
-// ============================================
-// Memory Carving Engine
-// ============================================
-class MemoryCarver {
-public:
-    struct CarvedFile {
-        std::string type;
-        uintptr_t offset;
-        size_t size;
-        std::vector<uint8_t> data;
+    struct Instruction {
+        uint64_t address;
+        std::string mnemonic;
+        std::string operands;
+        std::string bytes;
+        uint32_t size;
     };
     
-    std::vector<CarvedFile> carve_pe(const std::vector<uint8_t>& memory_dump) {
-        std::vector<CarvedFile> results;
+    enum class Architecture {
+        X86,
+        X64
+    };
+    
+private:
+    Architecture arch;
+    std::map<uint8_t, std::string> opcode_map = {
+        {0x90, "NOP"},
+        {0xCC, "INT3"},
+        {0xC3, "RET"},
+        {0xE8, "CALL"},
+        {0xE9, "JMP"},
+        {0x74, "JE"},
+        {0x75, "JNE"},
+        {0x0F, "0F"}, // Two-byte opcode prefix
+    };
+    
+public:
+    Disassembler(Architecture a) : arch(a) {}
+    
+    std::vector<Instruction> disassemble(const std::vector<uint8_t>& code, uint64_t base_addr) {
+        std::vector<Instruction> instructions;
         
-        // Search for PE signatures
-        std::vector<uint8_t> pe_signature = {'M', 'Z'};
-        std::vector<uint8_t> png_signature = {0x89, 'P', 'N', 'G'};
-        std::vector<uint8_t> jpeg_signature = {0xFF, 0xD8, 0xFF};
-        
-        for (size_t i = 0; i < memory_dump.size() - 512; ++i) {
-            // Check for PE
-            if (memory_dump[i] == 'M' && memory_dump[i + 1] == 'Z') {
-                CarvedFile file;
-                file.type = "PE";
-                file.offset = i;
-                file.size = 1024; // Estimate
-                file.data = std::vector<uint8_t>(memory_dump.begin() + i, 
-                                                memory_dump.begin() + i + std::min(size_t(4096), memory_dump.size() - i));
-                results.push_back(file);
-                i += 512; // Skip ahead
+        for (size_t i = 0; i < code.size(); ) {
+            Instruction inst;
+            inst.address = base_addr + i;
+            inst.size = 1;
+            
+            uint8_t opcode = code[i];
+            
+            // Simple opcode dispatch
+            switch (opcode) {
+                case 0x90:
+                    inst.mnemonic = "NOP";
+                    inst.operands = "";
+                    inst.bytes = "90";
+                    inst.size = 1;
+                    break;
+                    
+                case 0xCC:
+                    inst.mnemonic = "INT3";
+                    inst.operands = "";
+                    inst.bytes = "CC";
+                    inst.size = 1;
+                    break;
+                    
+                case 0xC3:
+                    inst.mnemonic = "RET";
+                    inst.operands = "";
+                    inst.bytes = "C3";
+                    inst.size = 1;
+                    break;
+                    
+                case 0xE8:
+                    inst.mnemonic = "CALL";
+                    inst.operands = "rel32";
+                    inst.bytes = "E8";
+                    if (i + 4 < code.size()) {
+                        int32_t offset = *reinterpret_cast<const int32_t*>(&code[i + 1]);
+                        inst.operands = "0x" + std::to_string(base_addr + i + 5 + offset);
+                    }
+                    inst.size = 5;
+                    break;
+                    
+                case 0xE9:
+                    inst.mnemonic = "JMP";
+                    inst.operands = "rel32";
+                    inst.bytes = "E9";
+                    inst.size = 5;
+                    break;
+                    
+                case 0xB8:
+                    inst.mnemonic = "MOV";
+                    inst.operands = "RAX, imm32";
+                    inst.bytes = "B8";
+                    inst.size = 5;
+                    break;
+                    
+                case 0x48:
+                    if (i + 1 < code.size() && code[i + 1] == 0x89) {
+                        inst.mnemonic = "MOV";
+                        inst.operands = "RAX, [RCX]";
+                        inst.bytes = "48 89 01";
+                        inst.size = 3;
+                    } else {
+                        inst.mnemonic = "UNKNOWN";
+                        inst.operands = "";
+                        inst.bytes = "48";
+                        inst.size = 1;
+                    }
+                    break;
+                    
+                case 0xFF:
+                    if (i + 1 < code.size()) {
+                        uint8_t modrm = code[i + 1];
+                        uint8_t reg = (modrm >> 3) & 0x7;
+                        if (reg == 2 || reg == 4 || reg == 6) {
+                            inst.mnemonic = "CALL";
+                            inst.operands = "r/m64";
+                            inst.bytes = "FF";
+                            inst.size = 2;
+                        } else {
+                            inst.mnemonic = "UNKNOWN";
+                            inst.size = 1;
+                        }
+                    }
+                    break;
+                    
+                default:
+                    inst.mnemonic = "DB";
+                    inst.operands = "0x" + std::to_string(opcode);
+                    inst.bytes = std::to_string(opcode);
+                    inst.size = 1;
+                    break;
             }
             
-            // Check for PNG
-            if (memory_dump[i] == 0x89 && memory_dump[i + 1] == 'P') {
-                CarvedFile file;
-                file.type = "PNG";
-                file.offset = i;
-                file.size = 2048;
-                file.data = std::vector<uint8_t>(memory_dump.begin() + i,
-                                                memory_dump.begin() + i + 256);
-                results.push_back(file);
-            }
+            instructions.push_back(inst);
+            i += inst.size;
         }
         
-        return results;
+        return instructions;
     }
     
-    void print_carved_files(const std::vector<CarvedFile>& files) {
-        std::cout << "\n=== Carved Files ===" << std::endl;
-        for (const auto& file : files) {
-            std::cout << "  Type: " << file.type 
-                      << " | Offset: 0x" << std::hex << file.offset 
-                      << " | Size: " << std::dec << file.size << " bytes" << std::endl;
+    void print_instructions(const std::vector<Instruction>& insts) {
+        std::cout << "\n=== Disassembly ===" << std::endl;
+        for (const auto& inst : insts) {
+            std::cout << std::hex << std::setfill('0') << std::setw(16) << inst.address 
+                      << std::dec << ": ";
+            std::cout << std::setfill(' ') << std::setw(8) << inst.bytes << "  ";
+            std::cout << std::left << std::setw(8) << inst.mnemonic 
+                      << " " << inst.operands << std::endl;
         }
     }
 };
 
 // ============================================
-// Code Cave Detection
+// Control Flow Graph (CFG)
 // ============================================
-class CodeCaveDetector {
+class CFGBuilder {
 public:
-    struct CodeCave {
-        uintptr_t start;
-        size_t size;
-        std::string region_type;
-        bool is_executable;
+    struct Block {
+        uint64_t start;
+        uint64_t end;
+        std::vector<uint64_t> successors;
+        std::vector<uint64_t> predecessors;
+        std::vector<Disassembler::Instruction> instructions;
     };
     
-    std::vector<CodeCave> detect_caves(const std::vector<uint8_t>& code_section) {
-        std::vector<CodeCave> caves;
+private:
+    std::map<uint64_t, Block> blocks;
+    
+public:
+    void build_cfg(const std::vector<Disassembler::Instruction>& insts) {
+        uint64_t current_start = insts[0].address;
+        uint64_t current_block_start = insts[0].address;
         
-        size_t cave_start = 0;
-        size_t consecutive_nops = 0;
-        const size_t MIN_CAVE_SIZE = 100;
-        
-        for (size_t i = 0; i < code_section.size(); ++i) {
-            if (code_section[i] == 0x90) { // NOP
-                if (consecutive_nops == 0) cave_start = i;
-                consecutive_nops++;
-            } else {
-                if (consecutive_nops >= MIN_CAVE_SIZE) {
-                    CodeCave cave;
-                    cave.start = cave_start;
-                    cave.size = consecutive_nops;
-                    cave.region_type = ".text";
-                    cave.is_executable = true;
-                    caves.push_back(cave);
+        for (size_t i = 0; i < insts.size(); ++i) {
+            const auto& inst = insts[i];
+            
+            // Check if this is a branch instruction
+            if (inst.mnemonic == "JMP" || inst.mnemonic == "JE" || 
+                inst.mnemonic == "JNE" || inst.mnemonic == "CALL" ||
+                inst.mnemonic == "RET") {
+                
+                // End current block
+                Block block;
+                block.start = current_block_start;
+                block.end = inst.address + inst.size;
+                blocks[current_block_start] = block;
+                
+                // Add edge if not RET
+                if (inst.mnemonic != "RET") {
+                    blocks[current_block_start].successors.push_back(inst.address + inst.size);
                 }
-                consecutive_nops = 0;
+                
+                // Start new block
+                current_block_start = inst.address + inst.size;
             }
         }
-        
-        return caves;
     }
     
-    void print_caves(const std::vector<CodeCave>& caves) {
-        std::cout << "\n=== Detected Code Caves ===" << std::endl;
-        for (const auto& cave : caves) {
-            std::cout << "  Cave: 0x" << std::hex << cave.start 
-                      << " | Size: " << std::dec << cave.size << " bytes"
-                      << " | Executable: " << (cave.is_executable ? "YES" : "NO") << std::endl;
+    void print_cfg() {
+        std::cout << "\n=== Control Flow Graph ===" << std::endl;
+        std::cout << "Total Blocks: " << blocks.size() << std::endl;
+        
+        for (const auto& [addr, block] : blocks) {
+            std::cout << "Block 0x" << std::hex << addr << std::dec << std::endl;
+            std::cout << "  Edges: " << block.successors.size() << std::endl;
+            for (auto succ : block.successors) {
+                std::cout << "    -> 0x" << std::hex << succ << std::dec << std::endl;
+            }
         }
     }
 };
 
 // ============================================
-// Driver Signature Verification
+// Shellcode Analyzer
 // ============================================
-class DriverVerifier {
+class ShellcodeAnalyzer {
 public:
-    struct VerificationResult {
-        bool is_signed;
-        std::string signer;
-        std::string publisher;
-        bool is_revoked;
-        std::string status;
+    struct AnalysisResult {
+        bool has_network_calls;
+        bool has_file_operations;
+        bool has_process_operations;
+        bool has_encryption;
+        bool has_persistence;
+        std::vector<std::string> api_calls;
+        std::vector<std::string> indicators;
+        double malicious_score;
     };
     
-    VerificationResult verify_driver(const std::string& driver_path) {
-        VerificationResult result;
+private:
+    std::vector<std::string> network_apis = {"socket", "connect", "send", "recv", "bind", "listen"};
+    std::vector<std::string> file_apis = {"CreateFile", "WriteFile", "DeleteFile", "MoveFile"};
+    std::vector<std::string> process_apis = {"CreateProcess", "VirtualAllocEx", "CreateThread"};
+    std::vector<std::string> encryption_apis = {"CryptEncrypt", "CryptDecrypt", "RC4", "AES"};
+    
+public:
+    AnalysisResult analyze(const std::vector<uint8_t>& shellcode) {
+        AnalysisResult result = {};
+        result.malicious_score = 0.0;
         
-        // Simulate verification
-        result.is_signed = true;
-        result.signer = "Microsoft Windows";
-        result.publisher = "Microsoft Corporation";
-        result.is_revoked = false;
+        // Convert to string for analysis
+        std::string code_str(shellcode.begin(), shellcode.end());
         
-        if (driver_path.find("unknown") != std::string::npos) {
-            result.is_signed = false;
-            result.status = "UNSIGNED DRIVER";
-        } else {
-            result.status = "VERIFIED";
+        // Check for suspicious patterns
+        for (const auto& api : network_apis) {
+            if (code_str.find(api) != std::string::npos) {
+                result.has_network_calls = true;
+                result.api_calls.push_back(api);
+                result.malicious_score += 20.0;
+                result.indicators.push_back("Network API call: " + api);
+            }
+        }
+        
+        for (const auto& api : process_apis) {
+            if (code_str.find(api) != std::string::npos) {
+                result.has_process_operations = true;
+                result.api_calls.push_back(api);
+                result.malicious_score += 25.0;
+                result.indicators.push_back("Process API call: " + api);
+            }
+        }
+        
+        // Check for null bytes (often absent in shellcode)
+        size_t null_count = std::count(code_str.begin(), code_str.end(), '\0');
+        double null_ratio = static_cast<double>(null_count) / shellcode.size();
+        if (null_ratio < 0.01) {
+            result.indicators.push_back("Low null byte ratio (possible shellcode)");
+            result.malicious_score += 15.0;
+        }
+        
+        // Check for XOR loops (common encryption)
+        std::regex xor_pattern("xchg.*xor|xor.*xor|xor.*al");
+        if (std::regex_search(code_str, xor_pattern)) {
+            result.has_encryption = true;
+            result.indicators.push_back("XOR loop detected (encryption/obfuscation)");
+            result.malicious_score += 10.0;
         }
         
         return result;
     }
     
-    void print_verification(const VerificationResult& result) {
-        std::cout << "\n=== Driver Verification ===" << std::endl;
-        std::cout << "Signed: " << (result.is_signed ? "YES" : "NO") << std::endl;
-        if (result.is_signed) {
-            std::cout << "Signer: " << result.signer << std::endl;
-            std::cout << "Publisher: " << result.publisher << std::endl;
+    void print_analysis(const AnalysisResult& result) {
+        std::cout << "\n=== Shellcode Analysis ===" << std::endl;
+        std::cout << "Malicious Score: " << std::fixed << std::setprecision(1) 
+                  << result.malicious_score << "/100" << std::endl;
+        
+        std::cout << "Indicators:" << std::endl;
+        for (const auto& ind : result.indicators) {
+            std::cout << "  [!] " << ind << std::endl;
         }
-        std::cout << "Status: " << result.status << std::endl;
+        
+        std::cout << "API Calls:" << std::endl;
+        for (const auto& api : result.api_calls) {
+            std::cout << "  - " << api << std::endl;
+        }
     }
 };
 
 // ============================================
-// Performance Monitor Integration
+// API Call Monitor
 // ============================================
-class PerformanceMonitor {
+class APICallMonitor {
 public:
-    struct PerfStats {
-        double cpu_usage;
-        double memory_usage;
-        double disk_io;
-        double network_io;
-        uint64_t uptime_seconds;
+    struct APIRecord {
+        std::string api_name;
+        uint64_t timestamp;
+        std::string arguments;
+        uint32_t thread_id;
+        bool success;
     };
     
-    PerfStats get_stats() {
-        PerfStats stats;
-        stats.cpu_usage = 45.5 + (rand() % 20 - 10);
-        stats.memory_usage = 62.3 + (rand() % 10 - 5);
-        stats.disk_io = 15.7;
-        stats.network_io = 2.3;
-        stats.uptime_seconds = 86400 + rand() % 10000;
-        return stats;
+private:
+    std::vector<APIRecord> records;
+    std::mutex monitor_mutex;
+    
+public:
+    void record_call(const std::string& api, const std::string& args, bool success) {
+        std::lock_guard<std::mutex> lock(monitor_mutex);
+        
+        APIRecord record;
+        record.api_name = api;
+        record.timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        record.arguments = args;
+        record.thread_id = GetCurrentThreadId();
+        record.success = success;
+        
+        records.push_back(record);
     }
     
-    void print_stats() {
-        auto stats = get_stats();
-        std::cout << "\n=== System Performance ===" << std::endl;
-        std::cout << "CPU Usage: " << std::fixed << std::setprecision(1) << stats.cpu_usage << "%" << std::endl;
-        std::cout << "Memory Usage: " << stats.memory_usage << "%" << std::endl;
-        std::cout << "Disk I/O: " << stats.disk_io << " MB/s" << std::endl;
-        std::cout << "Network I/O: " << stats.network_io << " MB/s" << std::endl;
-        std::cout << "Uptime: " << stats.uptime_seconds / 3600 << " hours" << std::endl;
+    void print_log() {
+        std::lock_guard<std::mutex> lock(monitor_mutex);
+        
+        std::cout << "\n=== API Call Log ===" << std::endl;
+        std::cout << "Total Calls: " << records.size() << std::endl;
+        
+        for (const auto& rec : records) {
+            std::cout << "[" << rec.timestamp << "] " << rec.api_name << "(" << rec.arguments << ")";
+            std::cout << " - " << (rec.success ? "SUCCESS" : "FAILED") << std::endl;
+        }
+    }
+};
+
+// ============================================
+// Malware Sandbox Simulation
+// ============================================
+class MalwareSandbox {
+public:
+    struct SandboxReport {
+        bool file_created;
+        bool registry_modified;
+        bool network_connections;
+        bool process_injection;
+        bool persistence_established;
+        double risk_score;
+        std::vector<std::string> behaviors;
+    };
+    
+private:
+    APICallMonitor monitor;
+    
+public:
+    SandboxReport run_analysis(const std::string& malware_path) {
+        SandboxReport report = {};
+        report.risk_score = 0.0;
+        
+        std::cout << "[*] Executing in sandbox: " << malware_path << std::endl;
+        
+        // Simulate malware execution
+        monitor.record_call("CreateFile", "C:\\malware.exe", true);
+        monitor.record_call("VirtualAllocEx", "size=0x10000", true);
+        monitor.record_call("WriteProcessMemory", "addr=0x140000000", true);
+        monitor.record_call("CreateRemoteThread", "target=1234", true);
+        monitor.record_call("RegSetValueEx", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", true);
+        monitor.record_call("InternetOpen", "user-agent=Mozilla", true);
+        monitor.record_call("InternetConnect", "host=malicious.com", true);
+        monitor.record_call("HttpSendRequest", "POST /collect", true);
+        
+        // Analyze behaviors
+        report.file_created = true;
+        report.registry_modified = true;
+        report.network_connections = true;
+        report.process_injection = true;
+        report.persistence_established = true;
+        
+        report.risk_score = 95.0;
+        report.behaviors.push_back("File creation detected");
+        report.behaviors.push_back("Registry modification for persistence");
+        report.behaviors.push_back("Process injection (DLL)");
+        report.behaviors.push_back("Network communication with suspicious host");
+        
+        return report;
+    }
+    
+    void print_report(const SandboxReport& report) {
+        std::cout << "\n=== Sandbox Analysis Report ===" << std::endl;
+        std::cout << "Risk Score: " << std::fixed << std::setprecision(1) 
+                  << report.risk_score << "/100" << std::endl;
+        std::cout << "Classification: " << (report.risk_score > 50 ? "MALICIOUS" : "SUSPICIOUS") << std::endl;
+        std::cout << "\nBehaviors:" << std::endl;
+        for (const auto& b : report.behaviors) {
+            std::cout << "  [!] " << b << std::endl;
+        }
+        
+        monitor.print_log();
+    }
+};
+
+// ============================================
+// YARA Rule Compiler
+// ============================================
+class YaraCompiler {
+public:
+    struct CompiledRule {
+        std::string name;
+        std::string pattern;
+        std::vector<std::string> strings;
+        std::string condition;
+        bool enabled;
+    };
+    
+private:
+    std::vector<CompiledRule> rules;
+    
+public:
+    CompiledRule compile_rule(const std::string& rule_text) {
+        CompiledRule rule;
+        rule.enabled = true;
+        
+        // Simple parsing
+        std::regex name_regex("rule\\s+(\\w+)");
+        std::regex strings_regex("\\$\\w+\\s*=\\s*\"([^\"]+)\"");
+        std::regex condition_regex("condition:\\s*(.+)");
+        
+        std::smatch match;
+        if (std::regex_search(rule_text, match, name_regex)) {
+            rule.name = match[1];
+        }
+        
+        std::sregex_iterator it(rule_text.begin(), rule_text.end(), strings_regex);
+        while (it != std::sregex_iterator()) {
+            rule.strings.push_back((*it)[1]);
+            ++it;
+        }
+        
+        if (std::regex_search(rule_text, match, condition_regex)) {
+            rule.condition = match[1];
+        }
+        
+        rules.push_back(rule);
+        return rule;
+    }
+    
+    bool match_rule(const CompiledRule& rule, const std::vector<uint8_t>& data) {
+        std::string data_str(data.begin(), data.end());
+        
+        for (const auto& pattern : rule.strings) {
+            if (data_str.find(pattern) != std::string::npos) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    void print_rules() {
+        std::cout << "\n=== Compiled YARA Rules ===" << std::endl;
+        for (const auto& rule : rules) {
+            std::cout << "Rule: " << rule.name << std::endl;
+            std::cout << "  Strings: " << rule.strings.size() << std::endl;
+            std::cout << "  Condition: " << rule.condition << std::endl;
+            std::cout << "  Enabled: " << (rule.enabled ? "YES" : "NO") << std::endl;
+        }
     }
 };
 
@@ -349,9 +516,9 @@ public:
 void print_banner() {
     std::cout << R"(
     ╔════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v5.0 - Advanced Memory Forensics & Analysis Suite          ║
-    ║     Volatility Plugins • Memory Carving • Code Cave Detection • Driver Verification  ║
-    ║     Author: Olivier Robert-Duboille                                                ║
+    ║     Kernel Memory Scanner v6.0 - Malware Analysis & Reverse Engineering Suite     ║
+    ║     Disassembler • CFG • Shellcode Analysis • Sandbox • YARA Compiler            ║
+    ║     Author: Olivier Robert-Duboille                                              ║
     ╚═════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
 }
@@ -359,63 +526,98 @@ void print_banner() {
 int main() {
     print_banner();
     
-    KernelScanner::PluginManager plugin_manager;
-    KernelScanner::MemoryCarver carver;
-    KernelScanner::DriverVerifier verifier;
-    KernelScanner::PerformanceMonitor perf_monitor;
+    KernelScanner::Disassembler disasm(KernelScanner::Disassembler::Architecture::X64);
+    KernelScanner::ShellcodeAnalyzer shell_analyzer;
+    KernelScanner::MalwareSandbox sandbox;
+    KernelScanner::YaraCompiler yara;
     
     std::cout << "Select Analysis Mode:" << std::endl;
-    std::cout << "1. List Plugins" << std::endl;
-    std::cout << "2. Run pslist Plugin" << std::endl;
-    std::cout << "3. Run netscan Plugin" << std::endl;
-    std::cout << "4. Memory Carving Demo" << std::endl;
-    std::cout << "5. Code Cave Detection" << std::endl;
-    std::cout << "6. Driver Verification" << std::endl;
-    std::cout << "7. Performance Monitor" << std::endl;
-    std::cout << "8. Full Analysis" << std::endl;
+    std::cout << "1. Disassemble Shellcode" << std::endl;
+    std::cout << "2. Analyze Shellcode" << std::endl;
+    std::cout << "3. Build Control Flow Graph" << std::endl;
+    std::cout << "4. Run Sandbox Analysis" << std::endl;
+    std::cout << "5. Compile YARA Rules" << std::endl;
+    std::cout << "6. Full Analysis" << std::endl;
     
     int choice;
     std::cin >> choice;
     
     switch (choice) {
-        case 1:
-            plugin_manager.list_plugins();
+        case 1: {
+            // Sample x64 shellcode
+            std::vector<uint8_t> shellcode = {
+                0x48, 0x89, 0xC3,             // MOV RBX, RAX
+                0x48, 0x89, 0xD8,             // MOV RAX, RBX
+                0xB8, 0x00, 0x00, 0x00, 0x00, // MOV RAX, 0
+                0xE8, 0x00, 0x00, 0x00, 0x00, // CALL rel32
+                0xC3,                           // RET
+                0x90, 0x90, 0x90              // NOP NOP NOP
+            };
+            auto insts = disasm.disassemble(shellcode, 0x140000000);
+            disasm.print_instructions(insts);
             break;
-        case 2:
-            plugin_manager.run_plugin("pslist");
+        }
+        case 2: {
+            std::vector<uint8_t> suspicious = {
+                0x90, 0x90, 0x90, 0x90, 0x90, 0xE8, 0x00, 0x00, 0x00, 0x00,
+                0xFF, 0x15, 0x00, 0x00, 0x00, 0x00, 0x48, 0x89, 0xC3, 0xC3
+            };
+            auto result = shell_analyzer.analyze(suspicious);
+            shell_analyzer.print_analysis(result);
             break;
-        case 3:
-            plugin_manager.run_plugin("netscan");
+        }
+        case 3: {
+            std::vector<uint8_t> code = {
+                0xB8, 0x01, 0x00, 0x00, 0x00, // MOV EAX, 1
+                0x83, 0xF8, 0x00,             // CMP EAX, 0
+                0x74, 0x05,                   // JE +5
+                0xB8, 0x02, 0x00, 0x00, 0x00, // MOV EAX, 2
+                0xE9, 0x0A, 0x00, 0x00, 0x00, // JMP +10
+                0xB8, 0x03, 0x00, 0x00, 0x00, // MOV EAX, 3
+                0xC3                            // RET
+            };
+            auto insts = disasm.disassemble(code, 0x1000);
+            KernelScanner::CFGBuilder cfg;
+            cfg.build_cfg(insts);
+            cfg.print_cfg();
             break;
+        }
         case 4: {
-            std::vector<uint8_t> dummy_dump(8192, 0);
-            dummy_dump[100] = 'M'; dummy_dump[101] = 'Z';
-            dummy_dump[500] = 0x89; dummy_dump[501] = 'P';
-            auto files = carver.carve_pe(dummy_dump);
-            carver.print_carved_files(files);
+            auto report = sandbox.run_analysis("suspicious.exe");
+            sandbox.print_report(report);
             break;
         }
         case 5: {
-            std::vector<uint8_t> code(4096, 0x90);
-            code[1000] = 0xCC;
-            auto caves = carver.detect_caves(code);
-            carver.print_caves(caves);
+            std::string rule_text = R"(
+rule suspicious_malware {
+    strings:
+        $a = "VirtualAllocEx"
+        $b = "CreateRemoteThread"
+        $c = { 90 90 90 90 }
+    condition:
+        $a and $b and $c
+}
+)";
+            auto rule = yara.compile_rule(rule_text);
+            yara.print_rules();
             break;
         }
         case 6: {
-            auto result = verifier.verify_driver("C:\\Windows\\System32\\ntoskrnl.exe");
-            verifier.print_verification(result);
+            std::cout << "\n=== Full Analysis ===" << std::endl;
+            // Disassembly
+            std::vector<uint8_t> code = {
+                0x48, 0x89, 0xC3, 0xB8, 0x00, 0x00, 0x00, 0x00,
+                0xE8, 0x00, 0x00, 0x00, 0x00, 0xC3, 0xCC, 0xCC
+            };
+            disasm.print_instructions(disasm.disassemble(code, 0x140000000));
+            
+            // Shellcode analysis
+            shell_analyzer.print_analysis(shell_analyzer.analyze(code));
+            
+            // Sandbox
+            sandbox.print_report(sandbox.run_analysis("sample.exe"));
             break;
         }
-        case 7:
-            perf_monitor.print_stats();
-            break;
-        case 8:
-            std::cout << "\n=== Full Memory Analysis ===" << std::endl;
-            plugin_manager.run_plugin("pslist");
-            plugin_manager.run_plugin("netscan");
-            perf_monitor.print_stats();
-            break;
     }
     
     return 0;
