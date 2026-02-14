@@ -28,6 +28,7 @@ set(DETECTION_SOURCES
     src/detection/syscall_hooks.cpp
     src/detection/code_injection.cpp
     src/detection/privilege_escalation.cpp
+    src/detection/rootkit_detector.cpp
 )
 
 # Source files - Analysis modules
@@ -37,6 +38,8 @@ set(ANALYSIS_SOURCES
     src/analysis/malware_sandbox.cpp
     src/analysis/yara_compiler.cpp
     src/analysis/network_analyzer.cpp
+    src/analysis/disassembler.cpp
+    src/analysis/shellcode_analyzer.cpp
 )
 
 # Include directories
