@@ -1,10 +1,10 @@
 /**
- * Kernel-Level Memory Scanner v17.0
- * Enterprise-Grade Kernel Security Suite with AI
+ * Kernel-Level Memory Scanner v18.0
+ * Enterprise-Grade Kernel Security Suite with Anti-Debug
  * 
- * v17.0 Features:
- * - All v16 modules PLUS:
- * - Neural Network Anomaly Detection (Deep Learning)
+ * v18.0 Features:
+ * - All v17 modules PLUS:
+ * - Anti-Debug Detection
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -24,21 +24,21 @@
 #include "include/pe_forensics.h"
 #include "include/code_cave_detector.h"
 #include "include/neural_network.h"
+#include "include/anti_debug.h"
 
 void print_banner() {
     std::cout << R"(
-    ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v17.0 - AI-Powered Enterprise Security Suite                                                                                                                                                                                           ║
-    ║     APT • Rootkits • Disassembler • Shellcode • Sandbox • YARA • Network • Volatility • Memory Carving • PE Forensics • Code Cave • Neural Network Anomaly Detection                                                                                                        ║
-    ║     Author: Olivier Robert-Duboille                                                                                                                                                                                                                  ║
-    ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+    ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════╗
+    ║     Kernel Memory Scanner v18.0 - Anti-Debug & Enterprise Security Suite                ║
+    ║     APT • Rootkits • Disassembler • Shellcode • Sandbox • YARA • Network • AI • Anti-Debug ║
+    ║     Author: Olivier Robert-Duboille                                                  ║
+    ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
 }
 
 int main() {
     print_banner();
     
-    // Initialize modules
     std::unique_ptr<KernelScanner::APTDetector> apt_detector(new KernelScanner::APTDetector());
     std::unique_ptr<KernelScanner::RootkitDetector> rootkit_detector(new KernelScanner::RootkitDetector());
     std::unique_ptr<KernelScanner::MalwareSandbox> sandbox(new KernelScanner::MalwareSandbox());
@@ -51,6 +51,7 @@ int main() {
     std::unique_ptr<KernelScanner::PEForensics> pe_forensics(new KernelScanner::PEForensics());
     std::unique_ptr<KernelScanner::CodeCaveDetector> code_cave(new KernelScanner::CodeCaveDetector());
     std::unique_ptr<KernelScanner::NeuralNetworkAnomalyDetection> neural_net(new KernelScanner::NeuralNetworkAnomalyDetection());
+    std::unique_ptr<KernelScanner::AntiDebugDetection> anti_debug(new KernelScanner::AntiDebugDetection());
     
     std::cout << "\nSelect Analysis Mode:" << std::endl;
     std::cout << " 1. APT Detection" << std::endl;
@@ -65,7 +66,8 @@ int main() {
     std::cout << "10. PE Forensics" << std::endl;
     std::cout << "11. Code Cave Detection" << std::endl;
     std::cout << "12. Neural Network Anomaly Detection (AI)" << std::endl;
-    std::cout << "13. Full Security Suite" << std::endl;
+    std::cout << "13. Anti-Debug Detection" << std::endl;
+    std::cout << "14. Full Security Suite" << std::endl;
     
     int choice;
     std::cin >> choice;
@@ -135,15 +137,20 @@ int main() {
             neural_net->print_network_architecture();
             std::vector<double> features(64, 0.5);
             auto result = neural_net->predict_anomaly(features);
-            std::cout << "\nAnomaly Detection: " << result.classification 
-                      << " (score: " << result.score << ")" << std::endl;
+            std::cout << "\nAnomaly: " << result.classification << std::endl;
             break;
         }
-        case 13:
+        case 13: {
+            auto indicators = anti_debug->detect_anti_debug();
+            anti_debug->print_detection_report(indicators);
+            anti_debug->check_remote_debugging();
+            anti_debug->check_virtualization();
+            break;
+        }
+        case 14:
             std::cout << "\n=== Full Security Suite ===" << std::endl;
-            neural_net->print_network_architecture();
-            auto result = neural_net->predict_anomaly(std::vector<double>(64, 0.5));
-            std::cout << "\nAnomaly: " << result.classification << std::endl;
+            auto indicators = anti_debug->detect_anti_debug();
+            anti_debug->print_detection_report(indicators);
             break;
     }
     

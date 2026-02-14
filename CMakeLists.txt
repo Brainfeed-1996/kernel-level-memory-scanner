@@ -45,6 +45,7 @@ set(ANALYSIS_SOURCES
     src/analysis/pe_forensics.cpp
     src/analysis/code_cave_detector.cpp
     src/analysis/neural_network.cpp
+    src/analysis/anti_debug.cpp
 )
 
 # Include directories
