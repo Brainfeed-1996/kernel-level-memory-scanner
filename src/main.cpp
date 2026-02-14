@@ -1,23 +1,19 @@
 /**
- * Kernel-Level Memory Scanner v11.0
- * Enterprise-Grade Kernel Security & APT Detection Suite
- * Extended Modular Architecture
+ * Kernel-Level Memory Scanner v12.0
+ * Enterprise-Grade Kernel Security Suite
+ * Extended Modular Architecture with Analysis Tools
  * 
- * v11.0 Features:
- * - All v10 modules PLUS:
- * - Kernel Callback Enumeration
- * - Process Hollowing Detection
- * - Fileless Malware Detection
- * - EDR Evasion Technique Detection
- * - Driver Load Behavior Analysis
- * - System Call Hook Detection
+ * v12.0 Features:
+ * - All v11 modules PLUS:
+ * - Memory Forensics Timeline Analysis
+ * - Code Injection Detection
+ * - Privilege Escalation Detection
  * 
  * Author: Olivier Robert-Duboille
  */
 
 #include <iostream>
 #include <memory>
-#include <iomanip>
 
 #include "include/apt_detector.h"
 #include "include/lotl_detector.h"
@@ -31,15 +27,18 @@
 #include "include/edr_evasion.h"
 #include "include/driver_analyzer.h"
 #include "include/syscall_hooks.h"
+#include "include/code_injection.h"
+#include "include/privilege_escalation.h"
 #include "include/attack_chain_visualizer.h"
+#include "include/memory_forensics.h"
 
 void print_banner() {
     std::cout << R"(
-    ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v11.0 - Extended Enterprise-Grade Security Suite (Modular)                              ║
-    ║     APT • LotL • Kernel Callbacks • Process Hollowing • Fileless Malware • EDR Evasion • Drivers • Syscalls    ║
-    ║     Author: Olivier Robert-Duboille                                                                                   ║
-    ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+    ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+    ║     Kernel Memory Scanner v12.0 - Enterprise Security Suite with Forensics & Detection                                   ║
+    ║     APT • LotL • Injections • PrivEsc • Timeline Forensics • Kernel Callbacks • Process Hollowing                     ║
+    ║     Author: Olivier Robert-Duboille                                                                                      ║
+    ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
 }
 
@@ -59,7 +58,10 @@ int main() {
     std::unique_ptr<KernelScanner::EDREvasionDetector> edr_evasion(new KernelScanner::EDREvasionDetector());
     std::unique_ptr<KernelScanner::DriverLoadAnalyzer> driver_analyzer(new KernelScanner::DriverLoadAnalyzer());
     std::unique_ptr<KernelScanner::SyscallHookDetector> syscall_detector(new KernelScanner::SyscallHookDetector());
+    std::unique_ptr<KernelScanner::CodeInjectionDetector> injection_detector(new KernelScanner::CodeInjectionDetector());
+    std::unique_ptr<KernelScanner::PrivilegeEscalationDetector> priv_esc_detector(new KernelScanner::PrivilegeEscalationDetector());
     std::unique_ptr<KernelScanner::AttackChainVisualizer> attack_chain(new KernelScanner::AttackChainVisualizer());
+    std::unique_ptr<KernelScanner::MemoryForensicsTimeline> timeline(new KernelScanner::MemoryForensicsTimeline());
     
     std::cout << "\nSelect Analysis Mode:" << std::endl;
     std::cout << " 1. APT Detection" << std::endl;
@@ -74,8 +76,11 @@ int main() {
     std::cout << "10. EDR Evasion Technique Detection" << std::endl;
     std::cout << "11. Driver Load Analysis" << std::endl;
     std::cout << "12. Syscall Hook Detection" << std::endl;
-    std::cout << "13. Attack Chain Visualization" << std::endl;
-    std::cout << "14. Full Security Suite (All Tests)" << std::endl;
+    std::cout << "13. Code Injection Detection" << std::endl;
+    std::cout << "14. Privilege Escalation Detection" << std::endl;
+    std::cout << "15. Memory Forensics Timeline" << std::endl;
+    std::cout << "16. Attack Chain Visualization" << std::endl;
+    std::cout << "17. Full Security Suite" << std::endl;
     
     int choice;
     std::cin >> choice;
@@ -134,51 +139,34 @@ int main() {
             syscall_detector->detect_syscall_hooks();
             syscall_detector->print_hook_report();
             break;
-        case 13:
+        case 13: {
+            auto injections = injection_detector->detect_injections();
+            injection_detector->print_injection_report(injections);
+            break;
+        }
+        case 14: {
+            auto events = priv_esc_detector->detect_privilege_escalation();
+            priv_esc_detector->print_escalation_report(events);
+            break;
+        }
+        case 15:
+            timeline->generate_timeline();
+            timeline->export_timeline("timeline.json");
+            break;
+        case 16:
             attack_chain->build_attack_chain();
             attack_chain->visualize_attack_chain();
             break;
-        case 14:
+        case 17:
             std::cout << "\n=== Full Security Suite ===" << std::endl;
-            
             auto apt = apt_detector->detect_apt();
             apt_detector->print_apt_report(apt);
-            
-            auto alerts = lotl_detector->detect_lotl();
-            lotl_detector->print_lotl_report(alerts);
-            
-            lateral_detector->detect_lateral_movement();
-            lateral_detector->print_movement_report();
-            
-            c2_detector->detect_c2();
-            c2_detector->print_c2_report();
-            
-            persistence_detector->detect_persistence();
-            persistence_detector->print_persistence_report();
-            
-            kernel_callbacks->print_callback_report(kernel_callbacks->enumerate_callbacks());
-            
-            auto result = hollowing_detector->detect_hollowing(1234);
-            hollowing_detector->print_hollowing_report(result);
-            
-            auto analysis = fileless_detector->scan_for_fileless();
-            fileless_detector->print_fileless_report(analysis);
-            
-            edr_evasion->scan_for_evasion();
-            edr_evasion->print_evasion_report();
-            
-            driver_analyzer->analyze_driver_loads();
-            driver_analyzer->print_driver_report();
-            
-            syscall_detector->detect_syscall_hooks();
-            syscall_detector->print_hook_report();
-            
-            threat_intel->initialize_ioc_database();
-            auto results = threat_intel->lookup_ioc("185.141.25.68");
-            threat_intel->print_ioc_report(results);
-            
-            attack_chain->build_attack_chain();
-            attack_chain->visualize_attack_chain();
+            auto injections = injection_detector->detect_injections();
+            injection_detector->print_injection_report(injections);
+            auto events = priv_esc_detector->detect_privilege_escalation();
+            priv_esc_detector->print_escalation_report(events);
+            timeline->generate_timeline();
+            timeline->export_timeline("timeline.json");
             break;
     }
     

@@ -26,11 +26,14 @@ set(DETECTION_SOURCES
     src/detection/edr_evasion.cpp
     src/detection/driver_analyzer.cpp
     src/detection/syscall_hooks.cpp
+    src/detection/code_injection.cpp
+    src/detection/privilege_escalation.cpp
 )
 
 # Source files - Analysis modules
 set(ANALYSIS_SOURCES
     src/analysis/attack_chain_visualizer.cpp
+    src/analysis/memory_forensics.cpp
 )
 
 # Include directories
