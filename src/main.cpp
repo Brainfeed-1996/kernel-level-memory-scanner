@@ -1,13 +1,12 @@
 /**
- * Kernel-Level Memory Scanner v14.0
+ * Kernel-Level Memory Scanner v15.0
  * Enterprise-Grade Kernel Security Suite
- * Ultimate Modular Architecture
+ * Complete Modular Architecture
  * 
- * v14.0 Features:
- * - All v13 modules PLUS:
- * - Disassembler (x86/x64)
- * - Shellcode Analyzer
- * - Rootkit Detector
+ * v15.0 Features:
+ * - All v14 modules PLUS:
+ * - Volatility Framework Plugins
+ * - Memory Carving
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -37,14 +36,16 @@
 #include "include/network_analyzer.h"
 #include "include/disassembler.h"
 #include "include/shellcode_analyzer.h"
+#include "include/volatility_plugins.h"
+#include "include/memory_carving.h"
 
 void print_banner() {
     std::cout << R"(
-    ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v14.0 - Ultimate Enterprise Security Suite                                                                                                   ║
-    ║     APT • LotL • Injections • PrivEsc • Rootkits • Disassembler • Shellcode Analysis • Sandbox • YARA • Network                                                      ║
-    ║     Author: Olivier Robert-Duboille                                                                                                                                ║
-    ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+    ╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+    ║     Kernel Memory Scanner v15.0 - Complete Enterprise Security Suite (Volatility + Carving)                                                                                                                     ║
+    ║     APT • LotL • Injections • PrivEsc • Rootkits • Disassembler • Shellcode • Sandbox • YARA • Network • Volatility Plugins • Memory Carving                                                       ║
+    ║     Author: Olivier Robert-Duboille                                                                                                                                                                        ║
+    ╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
 }
 
@@ -74,31 +75,20 @@ int main() {
     std::unique_ptr<KernelScanner::NetworkTrafficAnalyzer> network_analyzer(new KernelScanner::NetworkTrafficAnalyzer());
     std::unique_ptr<KernelScanner::Disassembler> disassembler(new KernelScanner::Disassembler());
     std::unique_ptr<KernelScanner::ShellcodeAnalyzer> shellcode_analyzer(new KernelScanner::ShellcodeAnalyzer());
+    std::unique_ptr<KernelScanner::VolatilityPlugins> volatility(new KernelScanner::VolatilityPlugins());
+    std::unique_ptr<KernelScanner::MemoryCarving> carving(new KernelScanner::MemoryCarving());
     
     std::cout << "\nSelect Analysis Mode:" << std::endl;
     std::cout << " 1. APT Detection" << std::endl;
-    std::cout << " 2. LotL Binary Detection" << std::endl;
-    std::cout << " 3. Lateral Movement Analysis" << std::endl;
-    std::cout << " 4. C2 Communication Detection" << std::endl;
-    std::cout << " 5. Threat Intelligence Lookup" << std::endl;
-    std::cout << " 6. Persistence Mechanism Detection" << std::endl;
-    std::cout << " 7. Kernel Callback Enumeration" << std::endl;
-    std::cout << " 8. Process Hollowing Detection" << std::endl;
-    std::cout << " 9. Fileless Malware Detection" << std::endl;
-    std::cout << "10. EDR Evasion Technique Detection" << std::endl;
-    std::cout << "11. Driver Load Analysis" << std::endl;
-    std::cout << "12. Syscall Hook Detection" << std::endl;
-    std::cout << "13. Code Injection Detection" << std::endl;
-    std::cout << "14. Privilege Escalation Detection" << std::endl;
-    std::cout << "15. Rootkit Detection" << std::endl;
-    std::cout << "16. Memory Forensics Timeline" << std::endl;
-    std::cout << "17. Malware Sandbox Analysis" << std::endl;
-    std::cout << "18. YARA Compiler" << std::endl;
-    std::cout << "19. Network Traffic Analysis" << std::endl;
-    std::cout << "20. Disassembler (x86/x64)" << std::endl;
-    std::cout << "21. Shellcode Analyzer" << std::endl;
-    std::cout << "22. Attack Chain Visualization" << std::endl;
-    std::cout << "23. Full Security Suite" << std::endl;
+    std::cout << " 2. Rootkit Detection" << std::endl;
+    std::cout << " 3. Malware Sandbox" << std::endl;
+    std::cout << " 4. YARA Compiler" << std::endl;
+    std::cout << " 5. Network Analysis" << std::endl;
+    std::cout << " 6. Disassembler" << std::endl;
+    std::cout << " 7. Shellcode Analyzer" << std::endl;
+    std::cout << " 8. Volatility Plugins (pslist, malfind, etc.)" << std::endl;
+    std::cout << " 9. Memory Carving" << std::endl;
+    std::cout << "10. Full Security Suite" << std::endl;
     
     int choice;
     std::cin >> choice;
@@ -110,112 +100,62 @@ int main() {
             break;
         }
         case 2: {
-            auto alerts = lotl_detector->detect_lotl();
-            lotl_detector->print_lotl_report(alerts);
-            break;
-        }
-        case 3:
-            lateral_detector->detect_lateral_movement();
-            lateral_detector->print_movement_report();
-            break;
-        case 4:
-            c2_detector->detect_c2();
-            c2_detector->print_c2_report();
-            break;
-        case 5: {
-            threat_intel->initialize_ioc_database();
-            auto results = threat_intel->lookup_ioc("185.141.25.68");
-            threat_intel->print_ioc_report(results);
-            break;
-        }
-        case 6:
-            persistence_detector->detect_persistence();
-            persistence_detector->print_persistence_report();
-            break;
-        case 7:
-            kernel_callbacks->print_callback_report(kernel_callbacks->enumerate_callbacks());
-            break;
-        case 8: {
-            auto result = hollowing_detector->detect_hollowing(1234);
-            hollowing_detector->print_hollowing_report(result);
-            break;
-        }
-        case 9: {
-            auto analysis = fileless_detector->scan_for_fileless();
-            fileless_detector->print_fileless_report(analysis);
-            break;
-        }
-        case 10:
-            edr_evasion->scan_for_evasion();
-            edr_evasion->print_evasion_report();
-            break;
-        case 11:
-            driver_analyzer->analyze_driver_loads();
-            driver_analyzer->print_driver_report();
-            break;
-        case 12:
-            syscall_detector->detect_syscall_hooks();
-            syscall_detector->print_hook_report();
-            break;
-        case 13: {
-            auto injections = injection_detector->detect_injections();
-            injection_detector->print_injection_report(injections);
-            break;
-        }
-        case 14: {
-            auto events = priv_esc_detector->detect_privilege_escalation();
-            priv_esc_detector->print_escalation_report(events);
-            break;
-        }
-        case 15: {
             auto rootkits = rootkit_detector->scan_for_rootkits();
             rootkit_detector->generate_report(rootkits);
             break;
         }
-        case 16:
-            timeline->generate_timeline();
-            timeline->export_timeline("timeline.json");
-            break;
-        case 17: {
+        case 3: {
             auto result = sandbox->analyze_malware("sample.exe");
             sandbox->generate_report(result);
             break;
         }
-        case 18: {
+        case 4: {
             auto rule = yara_compiler->create_rule("malware_rule", "rule malware { condition: true }");
             yara_compiler->compile_rule(rule);
             yara_compiler->print_compilation_result(rule);
             break;
         }
-        case 19:
+        case 5:
             network_analyzer->capture_packets(100);
             network_analyzer->analyze_traffic();
             network_analyzer->generate_report();
             break;
-        case 20: {
+        case 6: {
             std::vector<uint8_t> code = {0x55, 0x48, 0x89, 0xE5, 0x48, 0x83, 0xEC, 0x20, 0xE8};
             auto instructions = disassembler->disassemble_code(code, 0x10000);
             disassembler->print_disassembly(instructions);
             break;
         }
-        case 21: {
+        case 7: {
             std::vector<uint8_t> shellcode = {0x90, 0x90, 0xE8, 0x00, 0x00, 0x00, 0x00};
             auto info = shellcode_analyzer->analyze_shellcode(shellcode);
             shellcode_analyzer->generate_report(info);
             break;
         }
-        case 22:
-            attack_chain->build_attack_chain();
-            attack_chain->visualize_attack_chain();
+        case 8: {
+            auto result = volatility->run_pslist();
+            volatility->print_results(result);
+            result = volatility->run_malfind();
+            volatility->print_results(result);
+            result = volatility->run_callbacks();
+            volatility->print_results(result);
             break;
-        case 23:
+        }
+        case 9: {
+            auto objects = carving->carve_pe_files();
+            carving->print_carving_results(objects);
+            objects = carving->carve_urls();
+            carving->print_carving_results(objects);
+            break;
+        }
+        case 10:
             std::cout << "\n=== Full Security Suite ===" << std::endl;
             auto rootkits = rootkit_detector->scan_for_rootkits();
             rootkit_detector->generate_report(rootkits);
-            auto result = sandbox->analyze_malware("sample.exe");
-            sandbox->generate_report(result);
-            network_analyzer->capture_packets(100);
-            network_analyzer->generate_report();
+            auto result = volatility->run_pslist();
+            volatility->print_results(result);
+            auto objects = carving->carve_pe_files();
+            carving->print_carving_results(objects);
             break;
     }
     

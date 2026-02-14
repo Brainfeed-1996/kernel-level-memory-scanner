@@ -40,6 +40,8 @@ set(ANALYSIS_SOURCES
     src/analysis/network_analyzer.cpp
     src/analysis/disassembler.cpp
     src/analysis/shellcode_analyzer.cpp
+    src/analysis/volatility_plugins.cpp
+    src/analysis/memory_carving.cpp
 )
 
 # Include directories
