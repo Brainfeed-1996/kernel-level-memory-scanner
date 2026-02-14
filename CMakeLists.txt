@@ -35,6 +35,8 @@ set(DETECTION_SOURCES
     src/detection/ransomware_detector.cpp
     src/detection/bootkit_detector.cpp
     src/detection/amsi_bypass_detector.cpp
+    src/detection/fileless_attack_detector.cpp
+    src/detection/edr_evasion_detector.cpp
 )
 
 # Source files - Analysis modules
@@ -53,6 +55,7 @@ set(ANALYSIS_SOURCES
     src/analysis/neural_network.cpp
     src/analysis/anti_debug.cpp
     src/analysis/memory_integrity_checker.cpp
+    src/analysis/threat_hunting_engine.cpp
 )
 
 # Include directories

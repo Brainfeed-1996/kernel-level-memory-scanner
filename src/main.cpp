@@ -1,12 +1,12 @@
 /**
- * Kernel-Level Memory Scanner v21.0
- * Enterprise-Grade Kernel Security Suite with Ransomware, Bootkit & AMSI Detection
+ * Kernel-Level Memory Scanner v22.0
+ * Enterprise-Grade Kernel Security Suite with Threat Hunting & Fileless Detection
  * 
- * v21.0 Features:
- * - All v20 modules PLUS:
- * - Ransomware Detection
- * - Bootkit Detection
- * - AMSI Bypass Detection
+ * v22.0 Features:
+ * - All v21 modules PLUS:
+ * - Threat Hunting Engine (MITRE ATT&CK)
+ * - Fileless Attack Detector
+ * - EDR Evasion Detector
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -34,14 +34,17 @@
 #include "include/ransomware_detector.h"
 #include "include/bootkit_detector.h"
 #include "include/amsi_bypass_detector.h"
+#include "include/threat_hunting_engine.h"
+#include "include/fileless_attack_detector.h"
+#include "include/edr_evasion_detector.h"
 
 void print_banner() {
     std::cout << R"(
-    ╔═══════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v21.0 - Advanced Threat Detection Suite               ║
-    ║     APT • Ransomware • Bootkit • AMSI • Anti-Debug • Integrity • DLL • Ghosting • AI  ║
+    ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════╗
+    ║     Kernel Memory Scanner v22.0 - Advanced Threat Detection Suite                    ║
+    ║     APT • Ransomware • Bootkit • Threat Hunt • Fileless • EDR • MITRE ATT&CK • AI   ║
     ║     Author: Olivier Robert-Duboille                                                  ║
-    ╚═══════════════════════════════════════════════════════════════════════════════════════════════╝
+    ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
 }
 
@@ -68,6 +71,9 @@ int main() {
     std::unique_ptr<KernelScanner::RansomwareDetector> ransomware(new KernelScanner::RansomwareDetector());
     std::unique_ptr<KernelScanner::BootkitDetector> bootkit(new KernelScanner::BootkitDetector());
     std::unique_ptr<KernelScanner::AMSIBypassDetector> amsi(new KernelScanner::AMSIBypassDetector());
+    std::unique_ptr<KernelScanner::ThreatHuntingEngine> threat_hunt(new KernelScanner::ThreatHuntingEngine());
+    std::unique_ptr<KernelScanner::FilelessAttackDetector> fileless(new KernelScanner::FilelessAttackDetector());
+    std::unique_ptr<KernelScanner::EDREVasionDetector> edr_evasion(new KernelScanner::EDREVasionDetector());
     
     std::cout << "\nSelect Analysis Mode:" << std::endl;
     std::cout << " 1. APT Detection" << std::endl;
@@ -90,7 +96,10 @@ int main() {
     std::cout << "18. Ransomware Detection" << std::endl;
     std::cout << "19. Bootkit Detection" << std::endl;
     std::cout << "20. AMSI Bypass Detection" << std::endl;
-    std::cout << "21. Full Security Suite" << std::endl;
+    std::cout << "21. Threat Hunting Engine (MITRE ATT&CK)" << std::endl;
+    std::cout << "22. Fileless Attack Detector" << std::endl;
+    std::cout << "23. EDR Evasion Detector" << std::endl;
+    std::cout << "24. Full Security Suite" << std::endl;
     
     int choice;
     std::cin >> choice;
@@ -225,11 +234,35 @@ int main() {
             amsi->generate_amsi_report();
             break;
         }
-        case 21:
+        case 21: {
+            threat_hunt->initialize();
+            auto hunt = threat_hunt->create_hunt("Suspected lateral movement activity");
+            auto iocs = threat_hunt->execute_hunt(hunt);
+            threat_hunt->add_ioc_pattern("ip", ".*\\.cn$");
+            threat_hunt->generate_threat_intelligence_report();
+            break;
+        }
+        case 22: {
+            fileless->initialize();
+            auto threats = fileless->detect_fileless_activity();
+            fileless->analyze_memory_artifacts(1234);
+            auto artifacts = fileless->find_anomalous_memory_regions(1234);
+            fileless->generate_fileless_report();
+            break;
+        }
+        case 23: {
+            edr_evasion->initialize();
+            auto evasions = edr_evasion->detect_edr_evasion();
+            edr_evasion->detect_process_hollowing();
+            edr_evasion->detect_syscall_abuse();
+            edr_evasion->generate_edr_report();
+            break;
+        }
+        case 24:
             std::cout << "\n=== Full Security Suite ===" << std::endl;
-            ransomware->detect_ransomware_activity();
-            bootkit->scan_for_bootkits();
-            amsi->scan_for_amsi_bypasses();
+            threat_hunt->create_hunt("Full system threat hunt");
+            fileless->detect_fileless_activity();
+            edr_evasion->detect_edr_evasion();
             break;
     }
     
