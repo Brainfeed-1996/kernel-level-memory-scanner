@@ -32,6 +32,9 @@ set(DETECTION_SOURCES
     src/detection/heartbeat_detector.cpp
     src/detection/process_ghosting_detector.cpp
     src/detection/dll_hijacking_detector.cpp
+    src/detection/ransomware_detector.cpp
+    src/detection/bootkit_detector.cpp
+    src/detection/amsi_bypass_detector.cpp
 )
 
 # Source files - Analysis modules

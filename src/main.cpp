@@ -1,11 +1,12 @@
 /**
- * Kernel-Level Memory Scanner v20.0
- * Enterprise-Grade Kernel Security Suite with Memory Integrity & DLL Hijacking
+ * Kernel-Level Memory Scanner v21.0
+ * Enterprise-Grade Kernel Security Suite with Ransomware, Bootkit & AMSI Detection
  * 
- * v20.0 Features:
- * - All v19 modules PLUS:
- * - Memory Integrity Checker
- * - DLL Hijacking Detector
+ * v21.0 Features:
+ * - All v20 modules PLUS:
+ * - Ransomware Detection
+ * - Bootkit Detection
+ * - AMSI Bypass Detection
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -30,12 +31,15 @@
 #include "include/process_ghosting_detector.h"
 #include "include/memory_integrity_checker.h"
 #include "include/dll_hijacking_detector.h"
+#include "include/ransomware_detector.h"
+#include "include/bootkit_detector.h"
+#include "include/amsi_bypass_detector.h"
 
 void print_banner() {
     std::cout << R"(
     ╔═══════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v20.0 - Advanced Memory Security Suite               ║
-    ║     APT • Rootkits • Anti-Debug • Integrity • DLL • Ghosting • Disassembler • AI     ║
+    ║     Kernel Memory Scanner v21.0 - Advanced Threat Detection Suite               ║
+    ║     APT • Ransomware • Bootkit • AMSI • Anti-Debug • Integrity • DLL • Ghosting • AI  ║
     ║     Author: Olivier Robert-Duboille                                                  ║
     ╚═══════════════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
@@ -61,6 +65,9 @@ int main() {
     std::unique_ptr<KernelScanner::ProcessGhostingDetector> ghosting(new KernelScanner::ProcessGhostingDetector());
     std::unique_ptr<KernelScanner::MemoryIntegrityChecker> integrity(new KernelScanner::MemoryIntegrityChecker());
     std::unique_ptr<KernelScanner::DLLHijackingDetector> dll_hijack(new KernelScanner::DLLHijackingDetector());
+    std::unique_ptr<KernelScanner::RansomwareDetector> ransomware(new KernelScanner::RansomwareDetector());
+    std::unique_ptr<KernelScanner::BootkitDetector> bootkit(new KernelScanner::BootkitDetector());
+    std::unique_ptr<KernelScanner::AMSIBypassDetector> amsi(new KernelScanner::AMSIBypassDetector());
     
     std::cout << "\nSelect Analysis Mode:" << std::endl;
     std::cout << " 1. APT Detection" << std::endl;
@@ -80,7 +87,10 @@ int main() {
     std::cout << "15. Process Ghosting Detection" << std::endl;
     std::cout << "16. Memory Integrity Checker" << std::endl;
     std::cout << "17. DLL Hijacking Detector" << std::endl;
-    std::cout << "18. Full Security Suite" << std::endl;
+    std::cout << "18. Ransomware Detection" << std::endl;
+    std::cout << "19. Bootkit Detection" << std::endl;
+    std::cout << "20. AMSI Bypass Detection" << std::endl;
+    std::cout << "21. Full Security Suite" << std::endl;
     
     int choice;
     std::cin >> choice;
@@ -192,10 +202,34 @@ int main() {
             dll_hijack->generate_hijack_report();
             break;
         }
-        case 18:
+        case 18: {
+            ransomware->initialize();
+            auto threats = ransomware->detect_ransomware_activity();
+            ransomware->monitor_file_activity();
+            ransomware->generate_ransomware_report();
+            break;
+        }
+        case 19: {
+            bootkit->initialize();
+            auto indicators = bootkit->scan_for_bootkits();
+            bootkit->analyze_mbr({});
+            bootkit->detect_uefi_bootkits();
+            bootkit->generate_bootkit_report();
+            break;
+        }
+        case 20: {
+            amsi->initialize();
+            auto bypasses = amsi->scan_for_amsi_bypasses();
+            amsi->detect_amsi_scan_buffer_patch(1234);
+            amsi->detect_etw_tampering(1234);
+            amsi->generate_amsi_report();
+            break;
+        }
+        case 21:
             std::cout << "\n=== Full Security Suite ===" << std::endl;
-            integrity->check_integrity();
-            dll_hijack->scan_all_processes();
+            ransomware->detect_ransomware_activity();
+            bootkit->scan_for_bootkits();
+            amsi->scan_for_amsi_bypasses();
             break;
     }
     
