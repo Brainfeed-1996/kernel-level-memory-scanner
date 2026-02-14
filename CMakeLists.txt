@@ -13,9 +13,30 @@ endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 
-# Executable
+# Source files - Detection modules
+set(DETECTION_SOURCES
+    src/detection/apt_detector.cpp
+    src/detection/lotl_detector.cpp
+    src/detection/lateral_movement_detector.cpp
+    src/detection/c2_detector.cpp
+    src/detection/threat_intelligence.cpp
+    src/detection/persistence_detector.cpp
+)
+
+# Source files - Analysis modules
+set(ANALYSIS_SOURCES
+    src/analysis/attack_chain_visualizer.cpp
+)
+
+# Include directories
 include_directories(include)
-add_executable(scanner src/main.cpp)
+
+# Executable
+add_executable(scanner 
+    src/main.cpp
+    ${DETECTION_SOURCES}
+    ${ANALYSIS_SOURCES}
+)
 
 # Platform-specific settings
 if(WIN32)
