@@ -1,12 +1,12 @@
 /**
- * Kernel-Level Memory Scanner v15.0
+ * Kernel-Level Memory Scanner v16.0
  * Enterprise-Grade Kernel Security Suite
- * Complete Modular Architecture
+ * Ultimate Modular Architecture
  * 
- * v15.0 Features:
- * - All v14 modules PLUS:
- * - Volatility Framework Plugins
- * - Memory Carving
+ * v16.0 Features:
+ * - All v15 modules PLUS:
+ * - PE Forensics
+ * - Code Cave Detection
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -38,21 +38,23 @@
 #include "include/shellcode_analyzer.h"
 #include "include/volatility_plugins.h"
 #include "include/memory_carving.h"
+#include "include/pe_forensics.h"
+#include "include/code_cave_detector.h"
 
 void print_banner() {
     std::cout << R"(
-    ╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v15.0 - Complete Enterprise Security Suite (Volatility + Carving)                                                                                                                     ║
-    ║     APT • LotL • Injections • PrivEsc • Rootkits • Disassembler • Shellcode • Sandbox • YARA • Network • Volatility Plugins • Memory Carving                                                       ║
+    ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+    ║     Kernel Memory Scanner v16.0 - Ultimate Enterprise Security Suite with PE Forensics                                                                                                                            ║
+    ║     APT • LotL • Injections • PrivEsc • Rootkits • Disassembler • Shellcode • Sandbox • YARA • Network • Volatility • Memory Carving • PE Forensics • Code Cave Detection                                 ║
     ║     Author: Olivier Robert-Duboille                                                                                                                                                                        ║
-    ╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+    ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
 }
 
 int main() {
     print_banner();
     
-    // Initialize all detection modules
+    // Initialize all modules
     std::unique_ptr<KernelScanner::APTDetector> apt_detector(new KernelScanner::APTDetector());
     std::unique_ptr<KernelScanner::LotLDetector> lotl_detector(new KernelScanner::LotLDetector());
     std::unique_ptr<KernelScanner::LateralMovementDetector> lateral_detector(new KernelScanner::LateralMovementDetector());
@@ -77,6 +79,8 @@ int main() {
     std::unique_ptr<KernelScanner::ShellcodeAnalyzer> shellcode_analyzer(new KernelScanner::ShellcodeAnalyzer());
     std::unique_ptr<KernelScanner::VolatilityPlugins> volatility(new KernelScanner::VolatilityPlugins());
     std::unique_ptr<KernelScanner::MemoryCarving> carving(new KernelScanner::MemoryCarving());
+    std::unique_ptr<KernelScanner::PEForensics> pe_forensics(new KernelScanner::PEForensics());
+    std::unique_ptr<KernelScanner::CodeCaveDetector> code_cave(new KernelScanner::CodeCaveDetector());
     
     std::cout << "\nSelect Analysis Mode:" << std::endl;
     std::cout << " 1. APT Detection" << std::endl;
@@ -86,9 +90,11 @@ int main() {
     std::cout << " 5. Network Analysis" << std::endl;
     std::cout << " 6. Disassembler" << std::endl;
     std::cout << " 7. Shellcode Analyzer" << std::endl;
-    std::cout << " 8. Volatility Plugins (pslist, malfind, etc.)" << std::endl;
+    std::cout << " 8. Volatility Plugins" << std::endl;
     std::cout << " 9. Memory Carving" << std::endl;
-    std::cout << "10. Full Security Suite" << std::endl;
+    std::cout << "10. PE Forensics" << std::endl;
+    std::cout << "11. Code Cave Detection" << std::endl;
+    std::cout << "12. Full Security Suite" << std::endl;
     
     int choice;
     std::cin >> choice;
@@ -121,13 +127,13 @@ int main() {
             network_analyzer->generate_report();
             break;
         case 6: {
-            std::vector<uint8_t> code = {0x55, 0x48, 0x89, 0xE5, 0x48, 0x83, 0xEC, 0x20, 0xE8};
+            std::vector<uint8_t> code = {0x55, 0x48, 0x89, 0xE5};
             auto instructions = disassembler->disassemble_code(code, 0x10000);
             disassembler->print_disassembly(instructions);
             break;
         }
         case 7: {
-            std::vector<uint8_t> shellcode = {0x90, 0x90, 0xE8, 0x00, 0x00, 0x00, 0x00};
+            std::vector<uint8_t> shellcode = {0x90, 0x90, 0xE8};
             auto info = shellcode_analyzer->analyze_shellcode(shellcode);
             shellcode_analyzer->generate_report(info);
             break;
@@ -135,27 +141,35 @@ int main() {
         case 8: {
             auto result = volatility->run_pslist();
             volatility->print_results(result);
-            result = volatility->run_malfind();
-            volatility->print_results(result);
-            result = volatility->run_callbacks();
-            volatility->print_results(result);
             break;
         }
         case 9: {
             auto objects = carving->carve_pe_files();
             carving->print_carving_results(objects);
-            objects = carving->carve_urls();
-            carving->print_carving_results(objects);
             break;
         }
-        case 10:
+        case 10: {
+            auto header = pe_forensics->parse_pe_header("malware.exe");
+            pe_forensics->detect_packing();
+            pe_forensics->detect_obfuscation();
+            pe_forensics->analyze_imports();
+            pe_forensics->generate_report(header);
+            break;
+        }
+        case 11: {
+            auto caves = code_cave->detect_code_caves();
+            code_cave->analyze_caves();
+            code_cave->print_caves_report(caves);
+            break;
+        }
+        case 12:
             std::cout << "\n=== Full Security Suite ===" << std::endl;
             auto rootkits = rootkit_detector->scan_for_rootkits();
             rootkit_detector->generate_report(rootkits);
             auto result = volatility->run_pslist();
             volatility->print_results(result);
-            auto objects = carving->carve_pe_files();
-            carving->print_carving_results(objects);
+            auto caves = code_cave->detect_code_caves();
+            code_cave->print_caves_report(caves);
             break;
     }
     

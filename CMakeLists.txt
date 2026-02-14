@@ -42,6 +42,8 @@ set(ANALYSIS_SOURCES
     src/analysis/shellcode_analyzer.cpp
     src/analysis/volatility_plugins.cpp
     src/analysis/memory_carving.cpp
+    src/analysis/pe_forensics.cpp
+    src/analysis/code_cave_detector.cpp
 )
 
 # Include directories
