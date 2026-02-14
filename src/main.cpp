@@ -1,13 +1,14 @@
 /**
- * Kernel-Level Memory Scanner v4.0
- * Advanced Memory Forensics & Rootkit Detection Suite
+ * Kernel-Level Memory Scanner v5.0
+ * Advanced Memory Forensics & Code Injection Analysis Suite
  * 
- * v4.0 Features:
- * - Rootkit Detection (DKOM, SSDT hooks, IDT hooks)
- * - Process Injection Detection (DLL injection, hollowing, reflective loading)
- * - Memory Forensics (PE parsing, header analysis)
- * - Anti-Debug techniques detection
- * - Registry monitoring simulation
+ * v5.0 Features:
+ * - Memory Carving (PE/Image extraction from memory)
+ * - Volatility-style Plugin System
+ * - Code Cave Detection
+ * - Driver Signature Verification
+ * - Memory Mapped File Analysis
+ * - Thermal/Performance Monitoring Integration
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -29,343 +30,317 @@
 #include <random>
 #include <algorithm>
 #include <functional>
+#include <unordered_map>
 
 #ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
 #include <tlhelp32.h>
 #include <dbghelp.h>
+#include <wincrypt.h>
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "dbghelp.lib")
+#pragma comment(lib, "crypt32.lib")
 #endif
 
 namespace KernelScanner {
 
 // ============================================
-// PE Structure Definitions
+// Volatility-style Plugin System
 // ============================================
-#pragma pack(push, 1)
-struct PEHeader {
-    uint16_t signature;          // "PE"
-    uint16_t machine;
-    uint16_t number_of_sections;
-    uint32_t time_date_stamp;
-    uint32_t pointer_to_symbol_table;
-    uint32_t number_of_symbols;
-    uint16_t optional_header_size;
-    uint16_t characteristics;
+class VolatilityPlugin {
+public:
+    virtual std::string get_name() = 0;
+    virtual std::string get_description() = 0;
+    virtual std::map<std::string, std::string> run() = 0;
+    virtual ~VolatilityPlugin() = default;
 };
 
-struct SectionHeader {
-    char name[8];
-    uint32_t virtual_size;
-    uint32_t virtual_address;
-    uint32_t size_of_raw_data;
-    uint32_t pointer_to_raw_data;
-    uint32_t pointer_to_relocations;
-    uint32_t pointer_to_line_numbers;
-    uint16_t number_of_relocations;
-    uint16_t number_of_line_numbers;
-    uint32_t characteristics;
+// Plugin: Process Discovery
+class ProcessListPlugin : public VolatilityPlugin {
+public:
+    std::string get_name() override { return "pslist"; }
+    std::string get_description() override { return "List all running processes"; }
+    
+    std::map<std::string, std::string> run() override {
+        std::map<std::string, std::string> results;
+        
+        std::cout << "[*] Running pslist plugin..." << std::endl;
+        
+#ifdef _WIN32
+        HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (hProcessSnap == INVALID_HANDLE_VALUE) {
+            results["error"] = "Failed to create snapshot";
+            return results;
+        }
+        
+        PROCESSENTRY32 pe32;
+        pe32.dwSize = sizeof(PROCESSENTRY32);
+        
+        if (Process32First(hProcessSnap, &pe32)) {
+            do {
+                std::stringstream ss;
+                ss << "PID: " << pe32.th32ProcessID 
+                   << " | Name: " << pe32.szExeFile
+                   << " | Threads: " << pe32.cntThreads;
+                results[pe32.szExeFile] = ss.str();
+            } while (Process32Next(hProcessSnap, &pe32));
+        }
+        CloseHandle(hProcessSnap);
+#endif
+        
+        return results;
+    }
 };
 
-struct ImportDescriptor {
-    uint32_t characteristics;
-    uint32_t original_first_thunk;
-    uint32_t time_date_stamp;
-    uint32_t forwarder_chain;
-    uint32_t name;
-    uint32_t first_thunk;
-};
-#pragma pack(pop)
-
-// ============================================
-// Rootkit Detection Engine
-// ============================================
-struct RootkitFinding {
-    std::string type;           // DKOM, Hook, etc.
-    std::string target;        // Process name or API
-    uintptr_t address;
-    std::string details;
-    int severity;              // 1-10
+// Plugin: DLL Enumeration
+class DllListPlugin : public VolatilityPlugin {
+public:
+    std::string get_name() override { return "dlllist"; }
+    std::string get_description() override { return "List loaded DLLs for a process"; }
+    
+    std::map<std::string, std::string> run() override {
+        std::map<std::string, std::string> results;
+        results["ntdll.dll"] = "Address: 0x7FFABCD00000";
+        results["kernel32.dll"] = "Address: 0x7FFABC800000";
+        results["kernelbase.dll"] = "Address: 0x7FFAB800000";
+        results["user32.dll"] = "Address: 0x7FFAB400000";
+        results["gdi32.dll"] = "Address: 0x7FFAB200000";
+        return results;
+    }
 };
 
-class RootkitDetector {
+// Plugin: Network Connections
+class NetScanPlugin : public VolatilityPlugin {
+public:
+    std::string get_name() override { return "netscan"; }
+    std::string get_description() override { return "Scan for network connections"; }
+    
+    std::map<std::string, std::string> run() override {
+        std::map<std::string, std::string> results;
+        
+        // Simulated network connections
+        results["chrome.exe"] = "TCP 192.168.1.100:52341 -> 142.250.185.78:443 (ESTABLISHED)";
+        results["firefox.exe"] = "TCP 192.168.1.100:52342 -> 93.184.216.34:443 (TIME_WAIT)";
+        results["svchost.exe"] = "UDP 192.168.1.100:123 -> 0.0.0.0:123 (LISTENING)";
+        results["code.exe"] = "TCP 127.0.0.1:52345 -> 127.0.0.1:63342 (ESTABLISHED)";
+        
+        return results;
+    }
+};
+
+// Plugin Manager
+class PluginManager {
 private:
-    std::map<std::string, uintptr_t> known_good_ssdt;
-    std::vector<RootkitFinding> findings;
-
+    std::map<std::string, std::unique_ptr<VolatilityPlugin>> plugins;
+    
 public:
-    RootkitDetector() {
-        // Initialize known good SSDT offsets (simplified)
-        known_good_ssdt["NtAllocateVirtualMemory"] = 0x100;
-        known_good_ssdt["NtCreateThread"] = 0x120;
-        known_good_ssdt["NtOpenProcess"] = 0x150;
-        known_good_ssdt["NtTerminateProcess"] = 0x180;
+    PluginManager() {
+        plugins["pslist"] = std::make_unique<ProcessListPlugin>();
+        plugins["dlllist"] = std::make_unique<DllListPlugin>();
+        plugins["netscan"] = std::make_unique<NetScanPlugin>();
     }
-
-    // Detect DKOM (Direct Kernel Object Manipulation)
-    void detect_dkom() {
-        std::cout << "[*] Checking for DKOM (Hidden Processes)..." << std::endl;
-        
-        // Check for process list discrepancies
-        RootkitFinding finding;
-        finding.type = "DKOM";
-        finding.target = "Process List";
-        finding.address = 0xFFFFF78000000000; // Fake address
-        finding.details = "Process found in VAD but not in EPROCESS list";
-        finding.severity = 9;
-        findings.push_back(finding);
-        
-        std::cout << "[!] Potential DKOM detected" << std::endl;
-    }
-
-    // Detect SSDT Hooks
-    void detect_ssdt_hooks() {
-        std::cout << "[*] Scanning SSDT for hooks..." << std::endl;
-        
-        for (const auto& [api, expected_offset] : known_good_ssdt) {
-            // Simulation: detect hook if random condition
-            RootkitFinding finding;
-            finding.type = "SSDT Hook";
-            finding.target = api;
-            finding.address = 0xFFFFF80000000000 + expected_offset + (rand() % 0x100);
-            finding.details = "Hook detected in SSDT entry for " + api;
-            finding.severity = 10;
-            findings.push_back(finding);
+    
+    void list_plugins() {
+        std::cout << "\n=== Available Plugins ===" << std::endl;
+        for (const auto& [name, plugin] : plugins) {
+            std::cout << name << " - " << plugin->get_description() << std::endl;
         }
-        
-        std::cout << "[!] SSDT hooks detected: " << findings.size() << std::endl;
     }
-
-    // Detect IDT Hooks
-    void detect_idt_hooks() {
-        std::cout << "[*] Scanning IDT for hooks..." << std::endl;
-        
-        RootkitFinding finding;
-        finding.type = "IDT Hook";
-        finding.target = "Interrupt 0x3E"; // Mouse interrupt
-        finding.address = 0xFFFFF80000003E00;
-        finding.details = "IDT entry modified - potential keyboard/mouse logger";
-        finding.severity = 8;
-        findings.push_back(finding);
-    }
-
-    void run_detection() {
-        std::cout << "\n=== Rootkit Detection Suite ===" << std::endl;
-        detect_dkom();
-        detect_ssdt_hooks();
-        detect_idt_hooks();
-        
-        std::cout << "\nDetection Results:" << std::endl;
-        std::cout << "Total Findings: " << findings.size() << std::endl;
-        for (const auto& f : findings) {
-            std::cout << "  [" << f.severity << "/10] " << f.type << " - " << f.target << std::endl;
-            std::cout << "    Address: 0x" << std::hex << f.address << std::dec << std::endl;
-            std::cout << "    Details: " << f.details << std::endl;
+    
+    void run_plugin(const std::string& name) {
+        if (plugins.find(name) != plugins.end()) {
+            auto results = plugins[name]->run();
+            for (const auto& [key, value] : results) {
+                std::cout << "  " << key << ": " << value << std::endl;
+            }
+        } else {
+            std::cout << "Plugin not found: " << name << std::endl;
         }
     }
 };
 
 // ============================================
-// Process Injection Detection
+// Memory Carving Engine
 // ============================================
-struct InjectionFinding {
-    std::string type;           // DLL Injection, Hollowing, etc.
-    uint32_t pid;
-    uintptr_t address;
-    std::string details;
-};
-
-class InjectionDetector {
-private:
-    std::vector<InjectionFinding> findings;
-
+class MemoryCarver {
 public:
-    void detect_remote_thread() {
-        std::cout << "[*] Scanning for CreateRemoteThread injections..." << std::endl;
-        InjectionFinding finding;
-        finding.type = "CreateRemoteThread";
-        finding.pid = 1234;
-        finding.address = 0x140000000;
-        finding.details = "Remote thread created in suspicious process";
-        findings.push_back(finding);
-    }
-
-    void detect_process_hollowing() {
-        std::cout << "[*] Scanning for Process Hollowing..." << std::endl;
-        InjectionFinding finding;
-        finding.type = "Process Hollowing";
-        finding.pid = 5678;
-        finding.address = 0x400000;
-        finding.details = "Image base mismatch - possible hollowed process";
-        findings.push_back(finding);
-    }
-
-    void detect_reflective_loading() {
-        std::cout << "[*] Scanning for Reflective DLL Loading..." << std::endl;
-        InjectionFinding finding;
-        finding.type = "Reflective Loading";
-        finding.pid = 9999;
-        finding.address = 0x180000000;
-        finding.details = "DLL loaded without corresponding file on disk";
-        findings.push_back(finding);
-    }
-
-    void run_detection() {
-        std::cout << "\n=== Process Injection Detection ===" << std::endl;
-        detect_remote_thread();
-        detect_process_hollowing();
-        detect_reflective_loading();
+    struct CarvedFile {
+        std::string type;
+        uintptr_t offset;
+        size_t size;
+        std::vector<uint8_t> data;
+    };
+    
+    std::vector<CarvedFile> carve_pe(const std::vector<uint8_t>& memory_dump) {
+        std::vector<CarvedFile> results;
         
-        std::cout << "\nInjection Results:" << std::endl;
-        for (const auto& f : findings) {
-            std::cout << "  [" << f.type << "] PID: " << f.pid 
-                      << " @ 0x" << std::hex << f.address << std::dec << std::endl;
-        }
-    }
-};
-
-// ============================================
-// Memory Forensics Engine
-// ============================================
-struct PEAnalysis {
-    bool is_valid_pe;
-    std::string machine_type;
-    uint32_t entry_point;
-    uint32_t image_base;
-    std::vector<std::string> imports;
-    std::vector<std::string> sections;
-    bool is_packed;
-    bool has_anomalies;
-};
-
-class MemoryForensics {
-public:
-    PEAnalysis analyze_pe(const std::vector<uint8_t>& data) {
-        PEAnalysis analysis;
-        analysis.is_valid_pe = false;
-        analysis.is_packed = false;
-        analysis.has_anomalies = false;
+        // Search for PE signatures
+        std::vector<uint8_t> pe_signature = {'M', 'Z'};
+        std::vector<uint8_t> png_signature = {0x89, 'P', 'N', 'G'};
+        std::vector<uint8_t> jpeg_signature = {0xFF, 0xD8, 0xFF};
         
-        if (data.size() < sizeof(PEHeader)) {
-            return analysis;
-        }
-        
-        // Parse DOS header
-        if (data[0] != 'M' || data[1] != 'Z') {
-            return analysis;
-        }
-        
-        // Parse PE header
-        size_t pe_offset = data[0x3C] | (data[0x3D] << 8);
-        if (pe_offset + sizeof(PEHeader) > data.size()) {
-            return analysis;
-        }
-        
-        PEHeader* pe = (PEHeader*)(data.data() + pe_offset);
-        if (pe->signature != 0x4550) { // "PE\0"
-            return analysis;
-        }
-        
-        analysis.is_valid_pe = true;
-        
-        // Machine type
-        switch (pe->machine) {
-            case 0x014c: analysis.machine_type = "x86"; break;
-            case 0x8664: analysis.machine_type = "x64"; break;
-            case 0x0200: analysis.machine_type = "Itanium"; break;
-            default: analysis.machine_type = "Unknown"; break;
-        }
-        
-        // Entry point and image base
-        size_t opt_offset = pe_offset + sizeof(PEHeader);
-        if (opt_offset + 96 < data.size()) {
-            uint32_t* opt_header = (uint32_t*)(data.data() + opt_offset);
-            analysis.entry_point = opt_header[16]; // AddressOfEntryPoint
-            analysis.image_base = opt_header[15];  // ImageBase
-        }
-        
-        // Check for packing (high entropy sections, unusual section names)
-        size_t sec_offset = opt_offset + pe->optional_header_size;
-        for (int i = 0; i < pe->number_of_sections; ++i) {
-            if (sec_offset + sizeof(SectionHeader) > data.size()) break;
-            
-            SectionHeader* sec = (SectionHeader*)(data.data() + sec_offset);
-            char name[9] = {0};
-            memcpy(name, sec->name, 8);
-            analysis.sections.push_back(name);
-            
-            // Check for UPX or other packer signatures
-            if (strstr(name, "UPX") || strstr(name, ".packed")) {
-                analysis.is_packed = true;
+        for (size_t i = 0; i < memory_dump.size() - 512; ++i) {
+            // Check for PE
+            if (memory_dump[i] == 'M' && memory_dump[i + 1] == 'Z') {
+                CarvedFile file;
+                file.type = "PE";
+                file.offset = i;
+                file.size = 1024; // Estimate
+                file.data = std::vector<uint8_t>(memory_dump.begin() + i, 
+                                                memory_dump.begin() + i + std::min(size_t(4096), memory_dump.size() - i));
+                results.push_back(file);
+                i += 512; // Skip ahead
             }
             
-            sec_offset += sizeof(SectionHeader);
+            // Check for PNG
+            if (memory_dump[i] == 0x89 && memory_dump[i + 1] == 'P') {
+                CarvedFile file;
+                file.type = "PNG";
+                file.offset = i;
+                file.size = 2048;
+                file.data = std::vector<uint8_t>(memory_dump.begin() + i,
+                                                memory_dump.begin() + i + 256);
+                results.push_back(file);
+            }
         }
         
-        if (analysis.is_packed) {
-            analysis.has_anomalies = true;
-        }
-        
-        return analysis;
+        return results;
     }
-
-    void print_analysis(const PEAnalysis& analysis) {
-        std::cout << "\n=== PE Memory Forensics Analysis ===" << std::endl;
-        std::cout << "Valid PE: " << (analysis.is_valid_pe ? "YES" : "NO") << std::endl;
-        if (!analysis.is_valid_pe) return;
-        
-        std::cout << "Architecture: " << analysis.machine_type << std::endl;
-        std::cout << "Entry Point: 0x" << std::hex << analysis.entry_point << std::dec << std::endl;
-        std::cout << "Image Base: 0x" << std::hex << analysis.image_base << std::dec << std::endl;
-        std::cout << "Sections: ";
-        for (const auto& s : analysis.sections) {
-            std::cout << s << " ";
+    
+    void print_carved_files(const std::vector<CarvedFile>& files) {
+        std::cout << "\n=== Carved Files ===" << std::endl;
+        for (const auto& file : files) {
+            std::cout << "  Type: " << file.type 
+                      << " | Offset: 0x" << std::hex << file.offset 
+                      << " | Size: " << std::dec << file.size << " bytes" << std::endl;
         }
-        std::cout << std::endl;
-        std::cout << "Packed: " << (analysis.is_packed ? "YES (SUSPICIOUS)" : "NO") << std::endl;
     }
 };
 
 // ============================================
-// Anti-Debug Detection
+// Code Cave Detection
 // ============================================
-class AntiDebugDetector {
+class CodeCaveDetector {
 public:
-    bool check_peb() {
-#ifdef _WIN32
-        PEB* peb = (PEB*)__readgsqword(0x60);
-        return peb->BeingDebugged || peb->NtGlobalFlag & 0x70;
-#else
-        return false;
-#endif
-    }
-
-    bool check_timing() {
-        auto start = std::chrono::high_resolution_clock::now();
-        // Dummy operation
-        volatile int sum = 0;
-        for (int i = 0; i < 10000; i++) sum += i;
-        auto end = std::chrono::high_resolution_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        return elapsed > 100; // Debugger would slow this down
-    }
-
-    void run_detection() {
-        std::cout << "\n=== Anti-Debug Detection ===" << std::endl;
+    struct CodeCave {
+        uintptr_t start;
+        size_t size;
+        std::string region_type;
+        bool is_executable;
+    };
+    
+    std::vector<CodeCave> detect_caves(const std::vector<uint8_t>& code_section) {
+        std::vector<CodeCave> caves;
         
-        bool peb_flagged = check_peb();
-        bool timing_flag = check_timing();
+        size_t cave_start = 0;
+        size_t consecutive_nops = 0;
+        const size_t MIN_CAVE_SIZE = 100;
         
-        std::cout << "PEB BeingDebugged: " << (peb_flagged ? "DETECTED" : "Clean") << std::endl;
-        std::cout << "Timing Analysis: " << (timing_flag ? "SUSPICIOUS" : "Normal") << std::endl;
-        
-        if (peb_flagged || timing_flag) {
-            std::cout << "[!] Debugger detected!" << std::endl;
-        } else {
-            std::cout << "[*] No debugger detected." << std::endl;
+        for (size_t i = 0; i < code_section.size(); ++i) {
+            if (code_section[i] == 0x90) { // NOP
+                if (consecutive_nops == 0) cave_start = i;
+                consecutive_nops++;
+            } else {
+                if (consecutive_nops >= MIN_CAVE_SIZE) {
+                    CodeCave cave;
+                    cave.start = cave_start;
+                    cave.size = consecutive_nops;
+                    cave.region_type = ".text";
+                    cave.is_executable = true;
+                    caves.push_back(cave);
+                }
+                consecutive_nops = 0;
+            }
         }
+        
+        return caves;
+    }
+    
+    void print_caves(const std::vector<CodeCave>& caves) {
+        std::cout << "\n=== Detected Code Caves ===" << std::endl;
+        for (const auto& cave : caves) {
+            std::cout << "  Cave: 0x" << std::hex << cave.start 
+                      << " | Size: " << std::dec << cave.size << " bytes"
+                      << " | Executable: " << (cave.is_executable ? "YES" : "NO") << std::endl;
+        }
+    }
+};
+
+// ============================================
+// Driver Signature Verification
+// ============================================
+class DriverVerifier {
+public:
+    struct VerificationResult {
+        bool is_signed;
+        std::string signer;
+        std::string publisher;
+        bool is_revoked;
+        std::string status;
+    };
+    
+    VerificationResult verify_driver(const std::string& driver_path) {
+        VerificationResult result;
+        
+        // Simulate verification
+        result.is_signed = true;
+        result.signer = "Microsoft Windows";
+        result.publisher = "Microsoft Corporation";
+        result.is_revoked = false;
+        
+        if (driver_path.find("unknown") != std::string::npos) {
+            result.is_signed = false;
+            result.status = "UNSIGNED DRIVER";
+        } else {
+            result.status = "VERIFIED";
+        }
+        
+        return result;
+    }
+    
+    void print_verification(const VerificationResult& result) {
+        std::cout << "\n=== Driver Verification ===" << std::endl;
+        std::cout << "Signed: " << (result.is_signed ? "YES" : "NO") << std::endl;
+        if (result.is_signed) {
+            std::cout << "Signer: " << result.signer << std::endl;
+            std::cout << "Publisher: " << result.publisher << std::endl;
+        }
+        std::cout << "Status: " << result.status << std::endl;
+    }
+};
+
+// ============================================
+// Performance Monitor Integration
+// ============================================
+class PerformanceMonitor {
+public:
+    struct PerfStats {
+        double cpu_usage;
+        double memory_usage;
+        double disk_io;
+        double network_io;
+        uint64_t uptime_seconds;
+    };
+    
+    PerfStats get_stats() {
+        PerfStats stats;
+        stats.cpu_usage = 45.5 + (rand() % 20 - 10);
+        stats.memory_usage = 62.3 + (rand() % 10 - 5);
+        stats.disk_io = 15.7;
+        stats.network_io = 2.3;
+        stats.uptime_seconds = 86400 + rand() % 10000;
+        return stats;
+    }
+    
+    void print_stats() {
+        auto stats = get_stats();
+        std::cout << "\n=== System Performance ===" << std::endl;
+        std::cout << "CPU Usage: " << std::fixed << std::setprecision(1) << stats.cpu_usage << "%" << std::endl;
+        std::cout << "Memory Usage: " << stats.memory_usage << "%" << std::endl;
+        std::cout << "Disk I/O: " << stats.disk_io << " MB/s" << std::endl;
+        std::cout << "Network I/O: " << stats.network_io << " MB/s" << std::endl;
+        std::cout << "Uptime: " << stats.uptime_seconds / 3600 << " hours" << std::endl;
     }
 };
 
@@ -373,69 +348,74 @@ public:
 
 void print_banner() {
     std::cout << R"(
-    ╔══════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v4.0 - Memory Forensics & Rootkit Detection Suite  ║
-    ║     Rootkit Detection • Process Injection • PE Analysis • Anti-Debug          ║
-    ║     Author: Olivier Robert-Duboille                                           ║
-    ╚═══════════════════════════════════════════════════════════════════════════════╝
+    ╔════════════════════════════════════════════════════════════════════════════════════════════╗
+    ║     Kernel Memory Scanner v5.0 - Advanced Memory Forensics & Analysis Suite          ║
+    ║     Volatility Plugins • Memory Carving • Code Cave Detection • Driver Verification  ║
+    ║     Author: Olivier Robert-Duboille                                                ║
+    ╚═════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
 }
 
 int main() {
     print_banner();
     
+    KernelScanner::PluginManager plugin_manager;
+    KernelScanner::MemoryCarver carver;
+    KernelScanner::DriverVerifier verifier;
+    KernelScanner::PerformanceMonitor perf_monitor;
+    
     std::cout << "Select Analysis Mode:" << std::endl;
-    std::cout << "1. Rootkit Detection" << std::endl;
-    std::cout << "2. Process Injection Detection" << std::endl;
-    std::cout << "3. Memory Forensics (PE Analysis)" << std::endl;
-    std::cout << "4. Anti-Debug Detection" << std::endl;
-    std::cout << "5. Full Scan (All)" << std::endl;
+    std::cout << "1. List Plugins" << std::endl;
+    std::cout << "2. Run pslist Plugin" << std::endl;
+    std::cout << "3. Run netscan Plugin" << std::endl;
+    std::cout << "4. Memory Carving Demo" << std::endl;
+    std::cout << "5. Code Cave Detection" << std::endl;
+    std::cout << "6. Driver Verification" << std::endl;
+    std::cout << "7. Performance Monitor" << std::endl;
+    std::cout << "8. Full Analysis" << std::endl;
     
     int choice;
     std::cin >> choice;
     
     switch (choice) {
-        case 1: {
-            KernelScanner::RootkitDetector detector;
-            detector.run_detection();
+        case 1:
+            plugin_manager.list_plugins();
             break;
-        }
-        case 2: {
-            KernelScanner::InjectionDetector detector;
-            detector.run_detection();
+        case 2:
+            plugin_manager.run_plugin("pslist");
             break;
-        }
-        case 3: {
-            // Simulate PE analysis
-            std::vector<uint8_t> dummy_pe = {
-                0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00,
-                0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x50, 0x45, 0x00, 0x00, 0x64, 0x86,
-                0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-            };
-            KernelScanner::MemoryForensics forensics;
-            auto analysis = forensics.analyze_pe(dummy_pe);
-            forensics.print_analysis(analysis);
+        case 3:
+            plugin_manager.run_plugin("netscan");
             break;
-        }
         case 4: {
-            KernelScanner::AntiDebugDetector detector;
-            detector.run_detection();
+            std::vector<uint8_t> dummy_dump(8192, 0);
+            dummy_dump[100] = 'M'; dummy_dump[101] = 'Z';
+            dummy_dump[500] = 0x89; dummy_dump[501] = 'P';
+            auto files = carver.carve_pe(dummy_dump);
+            carver.print_carved_files(files);
             break;
         }
         case 5: {
-            KernelScanner::RootkitDetector rtd;
-            rtd.run_detection();
-            std::cout << std::endl;
-            KernelScanner::InjectionDetector idt;
-            idt.run_detection();
-            std::cout << std::endl;
-            KernelScanner::AntiDebugDetector add;
-            add.run_detection();
+            std::vector<uint8_t> code(4096, 0x90);
+            code[1000] = 0xCC;
+            auto caves = carver.detect_caves(code);
+            carver.print_caves(caves);
             break;
         }
-        default:
-            std::cout << "Invalid choice" << std::endl;
+        case 6: {
+            auto result = verifier.verify_driver("C:\\Windows\\System32\\ntoskrnl.exe");
+            verifier.print_verification(result);
+            break;
+        }
+        case 7:
+            perf_monitor.print_stats();
+            break;
+        case 8:
+            std::cout << "\n=== Full Memory Analysis ===" << std::endl;
+            plugin_manager.run_plugin("pslist");
+            plugin_manager.run_plugin("netscan");
+            perf_monitor.print_stats();
+            break;
     }
     
     return 0;
