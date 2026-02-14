@@ -29,6 +29,8 @@ set(DETECTION_SOURCES
     src/detection/code_injection.cpp
     src/detection/privilege_escalation.cpp
     src/detection/rootkit_detector.cpp
+    src/detection/heartbeat_detector.cpp
+    src/detection/process_ghosting_detector.cpp
 )
 
 # Source files - Analysis modules

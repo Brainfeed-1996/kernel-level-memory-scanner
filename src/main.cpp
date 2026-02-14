@@ -1,10 +1,11 @@
 /**
- * Kernel-Level Memory Scanner v18.0
- * Enterprise-Grade Kernel Security Suite with Anti-Debug
+ * Kernel-Level Memory Scanner v19.0
+ * Enterprise-Grade Kernel Security Suite with Heartbeat & Ghosting Detection
  * 
- * v18.0 Features:
- * - All v17 modules PLUS:
- * - Anti-Debug Detection
+ * v19.0 Features:
+ * - All v18 modules PLUS:
+ * - Heartbeat Anomaly Detection
+ * - Process Ghosting Detection
  * 
  * Author: Olivier Robert-Duboille
  */
@@ -25,12 +26,14 @@
 #include "include/code_cave_detector.h"
 #include "include/neural_network.h"
 #include "include/anti_debug.h"
+#include "include/heartbeat_detector.h"
+#include "include/process_ghosting_detector.h"
 
 void print_banner() {
     std::cout << R"(
     ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════╗
-    ║     Kernel Memory Scanner v18.0 - Anti-Debug & Enterprise Security Suite                ║
-    ║     APT • Rootkits • Disassembler • Shellcode • Sandbox • YARA • Network • AI • Anti-Debug ║
+    ║     Kernel Memory Scanner v19.0 - Advanced Threat Detection Suite                     ║
+    ║     APT • Rootkits • Anti-Debug • Heartbeat • Ghosting • Disassembler • Sandbox • AI     ║
     ║     Author: Olivier Robert-Duboille                                                  ║
     ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════╝
     )" << std::endl;
@@ -52,6 +55,8 @@ int main() {
     std::unique_ptr<KernelScanner::CodeCaveDetector> code_cave(new KernelScanner::CodeCaveDetector());
     std::unique_ptr<KernelScanner::NeuralNetworkAnomalyDetection> neural_net(new KernelScanner::NeuralNetworkAnomalyDetection());
     std::unique_ptr<KernelScanner::AntiDebugDetection> anti_debug(new KernelScanner::AntiDebugDetection());
+    std::unique_ptr<KernelScanner::HeartbeatDetector> heartbeat(new KernelScanner::HeartbeatDetector());
+    std::unique_ptr<KernelScanner::ProcessGhostingDetector> ghosting(new KernelScanner::ProcessGhostingDetector());
     
     std::cout << "\nSelect Analysis Mode:" << std::endl;
     std::cout << " 1. APT Detection" << std::endl;
@@ -67,7 +72,9 @@ int main() {
     std::cout << "11. Code Cave Detection" << std::endl;
     std::cout << "12. Neural Network Anomaly Detection (AI)" << std::endl;
     std::cout << "13. Anti-Debug Detection" << std::endl;
-    std::cout << "14. Full Security Suite" << std::endl;
+    std::cout << "14. Heartbeat Anomaly Detection" << std::endl;
+    std::cout << "15. Process Ghosting Detection" << std::endl;
+    std::cout << "16. Full Security Suite" << std::endl;
     
     int choice;
     std::cin >> choice;
@@ -147,10 +154,27 @@ int main() {
             anti_debug->check_virtualization();
             break;
         }
-        case 14:
+        case 14: {
+            heartbeat->initialize();
+            heartbeat->configure({1000, 5000, true, {0xAA, 0xBB}});
+            auto events = heartbeat->detect_anomalies();
+            heartbeat->validate_heartbeat(1234, {0x01, 0x02, 0x03});
+            heartbeat->generate_report();
+            break;
+        }
+        case 15: {
+            ghosting->initialize();
+            auto indicators = ghosting->detect_process_ghosting();
+            ghosting->analyze_memory_regions(5678);
+            ghosting->generate_threat_report();
+            break;
+        }
+        case 16:
             std::cout << "\n=== Full Security Suite ===" << std::endl;
             auto indicators = anti_debug->detect_anti_debug();
             anti_debug->print_detection_report(indicators);
+            heartbeat->detect_anomalies();
+            ghosting->detect_process_ghosting();
             break;
     }
     
