@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Build type
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
@@ -21,6 +20,12 @@ set(DETECTION_SOURCES
     src/detection/c2_detector.cpp
     src/detection/threat_intelligence.cpp
     src/detection/persistence_detector.cpp
+    src/detection/kernel_callbacks.cpp
+    src/detection/process_hollowing.cpp
+    src/detection/fileless_malware.cpp
+    src/detection/edr_evasion.cpp
+    src/detection/driver_analyzer.cpp
+    src/detection/syscall_hooks.cpp
 )
 
 # Source files - Analysis modules
