@@ -13,22 +13,22 @@
 
 ---
 
-## 📋 Documentation Complète
+## 📋 Complete Documentation
 
-Ce projet utilise une structure multi-fichiers pour éviter les limitations de taille sur GitHub. Consultez les fichiers suivants pour les détails techniques :
+This project uses a multi-file structure to avoid GitHub size limitations. Refer to the following files for technical details:
 
-| Fichier | Contenu |
-|---------|---------|
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Architecture système complète, flux de données, composants |
-| [`FEATURES.md`](FEATURES.md) | Catalogue détaillé des 53 modules (27 détection + 21 analyse) |
-| [`USAGE.md`](USAGE.md) | Guide d'installation, configuration et exemples d'utilisation |
-| [`API.md`](API.md) | Référence complète de l'API C++ |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Guide de contribution et développement |
-| [`TECHNICAL_SPECS.md`](TECHNICAL_SPECS.md) | Spécifications techniques, dépendances, configuration |
+| File | Content |
+|------|---------|
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Complete system architecture, data flow, components |
+| [`FEATURES.md`](FEATURES.md) | Detailed catalog of 53 modules (27 detection + 21 analysis) |
+| [`USAGE.md`](USAGE.md) | Installation guide, configuration and usage examples |
+| [`API.md`](API.md) | Complete C++ API reference |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution and development guide |
+| [`TECHNICAL_SPECS.md`](TECHNICAL_SPECS.md) | Technical specifications, dependencies, configuration |
 
 ---
 
-## 🚀 Installation Rapide
+## 🚀 Quick Installation
 
 ```bash
 git clone https://github.com/Brainfeed-1996/kernel-level-memory-scanner.git
@@ -38,16 +38,16 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --parallel
 ```
 
-**Prérequis :**
-- C++20 avec concepts et ranges
+**Prerequisites:**
+- C++20 with concepts and ranges
 - CMake 3.16+
 - Boost 1.75+
-- Python 3.8+ (pour ML)
-- PyTorch 2.x ou TensorFlow 2.x
+- Python 3.8+ (for ML)
+- PyTorch 2.x or TensorFlow 2.x
 
 ---
 
-## ⚡ Utilisation Basique
+## ⚡ Basic Usage
 
 ```cpp
 #include "memory_scanner.h"
@@ -62,7 +62,7 @@ int main() {
     if (!scanner.initialize(config)) return 1;
     
     auto result = scanner.full_system_scan();
-    std::cout << "Détections: " << result.detections.size() << std::endl;
+    std::cout << "Detections: " << result.detections.size() << std::endl;
     
     scanner.generate_forensic_report(result, KernelScanner::ReportFormat::JSON);
     return 0;
@@ -73,9 +73,9 @@ int main() {
 
 ## 📊 Performance
 
-| Métrique | Valeur |
-|----------|--------|
-| **Full System Scan** | < 30 secondes |
+| Metric | Value |
+|--------|-------|
+| **Full System Scan** | < 30 seconds |
 | **Detection Accuracy** | 99.7% |
 | **False Positive Rate** | < 0.3% |
 | **Memory Footprint** | < 500 MB |
@@ -83,14 +83,14 @@ int main() {
 
 ---
 
-## 🔗 Liens Utiles
+## 🔗 Useful Links
 
 - [GitHub Repository](https://github.com/Brainfeed-1996/kernel-level-memory-scanner)
-- [Documentation Complete](ARCHITECTURE.md)
+- [Complete Documentation](ARCHITECTURE.md)
 - [API Reference](API.md)
 - [Contribution Guidelines](CONTRIBUTING.md)
 
 ---
 
-**⭐ Star ce projet si utile !**  
-**💡 Pour toute question, ouvrez une issue sur GitHub.**
+**⭐ Star this project if useful!**  
+**💡 For any questions, open an issue on GitHub.**
