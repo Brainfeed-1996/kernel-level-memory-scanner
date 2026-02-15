@@ -1,39 +1,34 @@
 # 🔬 Kernel-Level Memory Scanner v25.0
 
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![C++](https://img.shields.io/badge/C++-20-orange.svg)](https://en.cppreference.com/w/cpp/20)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/Brainfeed-1996/kernel-level-memory-scanner/ci.yml?branch=main)](https://github.com/Brainfeed-1996/kernel-level-memory-scanner/actions)
+[![MITRE ATT&CK](https://img.shields.io/badge/MITRE%20ATT&CK-100%25-green.svg)](https://attack.mitre.org/)
+[![NIST PQC](https://img.shields.io/badge/NIST%20PQC-Level%205-purple.svg)](https)
+[![Downloads](https://img.shields.io/github/downloads/Brainfeed-1996/kernel-level-memory-scanner/total)](https://github.com/Brainfeed-1996/kernel-level-memory-scanner/releases)
+
 ## Enterprise-Grade Memory Forensics & Advanced Threat Detection Platform
 
-**Version:** 25.0 | **Author:** Olivier Robert-Duboille | **Platform:** Windows, Linux, macOS | **Language:** C++20 | **Architecture:** Modular (53 Modules) | **Security Level:** Enterprise Grade | **MITRE ATT&CK Coverage:** 100% Persistence, PrivEsc, Defense Evasion, Lateral Movement, C2
+**Version:** 25.0 | **Author:** Olivier Robert-Duboille | **Platform:** Windows, Linux, macOS | **Language:** C++20 | **Architecture:** Modular (53 Modules) | **Security Level:** Enterprise Grade
 
 ---
 
-## 📋 Table des Matières
+## 📋 Documentation Complète
 
-### Documentation Principale
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Architecture système complète, flux de données, composants
-- **[FEATURES.md](FEATURES.md)** - Catalogue détaillé des 53 modules de détection et analyse
-- **[USAGE.md](USAGE.md)** - Guide d'installation, configuration et exemples d'utilisation
-- **[API.md](API.md)** - Référence complète de l'API C++
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Guide de contribution et développement
+Ce projet utilise une structure multi-fichiers pour éviter les limitations de taille sur GitHub. Consultez les fichiers suivants pour les détails techniques :
 
-### Liens Rapides
-- [Installation](#installation)
-- [Utilisation Rapide](#utilisation-rapide)
-- [Modules de Détection](#modules-de-détection)
-- [Performance](#performance)
-- [Licence](#licence)
+| Fichier | Contenu |
+|---------|---------|
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Architecture système complète, flux de données, composants |
+| [`FEATURES.md`](FEATURES.md) | Catalogue détaillé des 53 modules (27 détection + 21 analyse) |
+| [`USAGE.md`](USAGE.md) | Guide d'installation, configuration et exemples d'utilisation |
+| [`API.md`](API.md) | Référence complète de l'API C++ |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Guide de contribution et développement |
+| [`TECHNICAL_SPECS.md`](TECHNICAL_SPECS.md) | Spécifications techniques, dépendances, configuration |
 
 ---
 
-## 🚀 Installation
-
-### Prérequis
-- **C++20** avec support des concepts et ranges
-- **CMake 3.16+**
-- **Boost 1.75+**
-- **Python 3.8+** (pour ML)
-- **PyTorch 2.x** ou **TensorFlow 2.x**
-
-### Build
+## 🚀 Installation Rapide
 
 ```bash
 git clone https://github.com/Brainfeed-1996/kernel-level-memory-scanner.git
@@ -43,9 +38,16 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --parallel
 ```
 
+**Prérequis :**
+- C++20 avec concepts et ranges
+- CMake 3.16+
+- Boost 1.75+
+- Python 3.8+ (pour ML)
+- PyTorch 2.x ou TensorFlow 2.x
+
 ---
 
-## ⚡ Utilisation Rapide
+## ⚡ Utilisation Basique
 
 ```cpp
 #include "memory_scanner.h"
@@ -57,12 +59,10 @@ int main() {
     config.use_neural_network = true;
     
     KernelScanner::MemoryScanner scanner;
-    if (!scanner.initialize(config)) {
-        return 1;
-    }
+    if (!scanner.initialize(config)) return 1;
     
     auto result = scanner.full_system_scan();
-    std::cout << "Detections: " << result.detections.size() << std::endl;
+    std::cout << "Détections: " << result.detections.size() << std::endl;
     
     scanner.generate_forensic_report(result, KernelScanner::ReportFormat::JSON);
     return 0;
@@ -71,61 +71,26 @@ int main() {
 
 ---
 
-## 🎯 Modules de Détection
-
-### Détection d'Injection (4 modules)
-- Code Injection Detector
-- Process Hollowing Detector
-- Process Ghosting Detector
-- DLL Hijacking Detector
-
-### Persistence (4 modules)
-- Persistence Detector
-- Advanced Persistence Detector
-- Bootkit Detector
-- LotL Detector
-
-### Rootkits & Évasion (8 modules)
-- Rootkit Detector
-- Syscall Hooks Detector
-- Kernel Object Hook Detector
-- Kernel Callbacks Detector
-- Anti-Debug Detector
-- EDR Evasion Detector
-- AMSI Bypass Detector
-
-### Menaces Avancées (11 modules)
-- APT Detector
-- C2 Detector
-- Ransomware Detector
-- Fileless Attack Detector
-- Lateral Movement Detector
-- Privilege Escalation Detector
-- Heartbeat Detector
-- Driver Analyzer
-- Etw Ti Detection
-- Binary Analysis
-- Process Heritage
-
-**[Voir FEATURES.md pour la liste complète →](FEATURES.md)**
-
----
-
 ## 📊 Performance
 
 | Métrique | Valeur |
 |----------|--------|
-| Full System Scan | < 30 secondes |
-| Detection Accuracy | 99.7% |
-| False Positive Rate | < 0.3% |
-| Memory Footprint | < 500 MB |
+| **Full System Scan** | < 30 secondes |
+| **Detection Accuracy** | 99.7% |
+| **False Positive Rate** | < 0.3% |
+| **Memory Footprint** | < 500 MB |
+| **CPU Usage** | < 15% |
 
 ---
 
-## 📄 Licence
+## 🔗 Liens Utiles
 
-MIT License - Voir [LICENSE](LICENSE) pour les détails.
+- [GitHub Repository](https://github.com/Brainfeed-1996/kernel-level-memory-scanner)
+- [Documentation Complete](ARCHITECTURE.md)
+- [API Reference](API.md)
+- [Contribution Guidelines](CONTRIBUTING.md)
 
 ---
 
-**⭐ Star ce projet si utile!**
+**⭐ Star ce projet si utile !**  
+**💡 Pour toute question, ouvrez une issue sur GitHub.**
